@@ -1,0 +1,3555 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<script src="../gate.js"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>我的紀錄</title>
+<script src="data.js?v=1784121802"></script>
+<style>
+/* ─── Reset & Base ─────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg:       #0d0d1a;
+  --bg2:      #13132a;
+  --bg3:      #1a1a35;
+  --bg4:      #22223f;
+  --border:   #2a2a50;
+  --accent:   #7c3aed;
+  --accent2:  #a78bfa;
+  --accent3:  #c4b5fd;
+  --green:    #10b981;
+  --yellow:   #f59e0b;
+  --red:      #ef4444;
+  --blue:     #60a5fa;
+  --text:     #e0e0f0;
+  --text2:    #9090b0;
+  --text3:    #555570;
+  --radius:   8px;
+  --shadow:   0 4px 24px rgba(0,0,0,0.5);
+}
+html { font-size: 14px; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Segoe UI', 'Microsoft JhengHei', sans-serif;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+a { color: inherit; text-decoration: none; }
+button { cursor: pointer; border: none; font-family: inherit; }
+
+/* ─── Layout ───────────────────────────────── */
+#app { display: flex; flex-direction: column; height: 100vh; }
+
+/* ─── Header ───────────────────────────────── */
+#header {
+  background: linear-gradient(135deg, #14142e 0%, #1a1a38 100%);
+  border-bottom: 1px solid var(--border);
+  padding: 0 20px;
+  flex-shrink: 0;
+  z-index: 10;
+  box-shadow: 0 2px 20px rgba(0,0,0,0.4);
+}
+#header-top {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 0 8px;
+}
+#site-title {
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: 3px;
+  background: linear-gradient(135deg, #a78bfa, #60a5fa);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+#header-stats {
+  font-size: 11px;
+  color: var(--text3);
+  margin-left: auto;
+}
+#last-updated {
+  font-size: 11px;
+  color: var(--text3);
+  white-space: nowrap;
+  cursor: default;
+}
+#last-updated-input {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text);
+  font-size: 11px;
+  padding: 1px 4px;
+  color-scheme: dark;
+}
+#server-status {
+  font-size: 10px;
+  margin-left: 12px;
+  color: #4ade80;
+  white-space: nowrap;
+  cursor: default;
+}
+#server-status.offline { color: #f87171; }
+#server-status.multi  { color: #fb923c; }
+#server-help {
+  position: relative;
+  font-size: 9px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 1px solid var(--text3);
+  color: var(--text3);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: default;
+  margin-left: 5px;
+  flex-shrink: 0;
+  user-select: none;
+}
+#server-help:hover { border-color: var(--text2); color: var(--text2); }
+#server-help-tip {
+  display: none;
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 13px;
+  white-space: nowrap;
+  box-shadow: 0 8px 24px #000a;
+  z-index: 200;
+  font-size: 11px;
+  color: var(--text2);
+}
+#server-help:hover #server-help-tip { display: block; }
+.sht-row { padding: 3px 0; display: flex; align-items: center; gap: 8px; }
+
+.sort-hint {
+  position: relative;
+  font-size: 9px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 1px solid var(--text3);
+  color: var(--text3);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: default;
+  flex-shrink: 0;
+  user-select: none;
+  margin-left: 4px;
+}
+.sort-hint:hover { border-color: var(--accent2); color: var(--accent2); }
+.sort-hint-tip {
+  display: none;
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  width: 260px;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 13px;
+  white-space: normal;
+  box-shadow: 0 8px 24px #000a;
+  z-index: 200;
+  font-size: 11px;
+  color: var(--text2);
+  line-height: 1.6;
+}
+.sort-hint:hover .sort-hint-tip { display: block; }
+.sort-hint-tip .sht-title { font-weight: 700; color: var(--text); margin-bottom: 4px; }
+.sort-hint-tip .sht-item { padding: 2px 0; }
+
+/* ─── Nav Tabs ─────────────────────────────── */
+#nav-tabs { display: flex; gap: 2px; }
+.nav-tab {
+  padding: 8px 22px;
+  font-size: 13px;
+  font-weight: 600;
+  border-radius: 6px 6px 0 0;
+  transition: all .2s;
+  background: transparent;
+  color: var(--text3);
+  position: relative;
+}
+.nav-tab.active {
+  background: var(--accent);
+  color: #fff;
+}
+.nav-tab.soon {
+  font-style: italic;
+  font-size: 12px;
+  color: var(--text3);
+}
+.nav-tab .tab-count {
+  display: inline-block;
+  background: rgba(255,255,255,.15);
+  border-radius: 8px;
+  padding: 1px 6px;
+  font-size: 10px;
+  margin-left: 4px;
+}
+.nav-tab.soon .tab-count {
+  background: var(--bg4);
+  font-style: normal;
+}
+
+/* ─── Filter Bar ───────────────────────────── */
+#filter-bar {
+  background: var(--bg2);
+  border-bottom: 1px solid var(--border);
+  padding: 8px 20px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  flex-shrink: 0;
+}
+#search-box {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 5px 12px;
+  color: var(--text);
+  font-size: 12px;
+  width: 200px;
+  outline: none;
+  transition: border .2s;
+}
+#search-box:focus { border-color: var(--accent); }
+#search-box::placeholder { color: var(--text3); }
+
+.filter-group { display: flex; gap: 4px; flex-wrap: wrap; }
+.filter-sep {
+  width: 1px;
+  height: 20px;
+  background: var(--border);
+  align-self: center;
+}
+.filt-btn {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 4px 10px;
+  color: var(--text2);
+  font-size: 11px;
+  transition: all .15s;
+}
+.filt-btn:hover { border-color: var(--accent); color: var(--accent3); }
+.filt-btn.on {
+  background: rgba(124,58,237,.2);
+  border-color: var(--accent);
+  color: var(--accent3);
+}
+#result-count { margin-left: auto; font-size: 11px; color: var(--text3); white-space: nowrap; }
+
+/* ─── Main Layout ──────────────────────────── */
+#main { display: flex; flex: 1; overflow: hidden; }
+
+/* ─── Year Sidebar ─────────────────────────── */
+#sidebar {
+  width: 68px;
+  background: #0a0a18;
+  border-right: 1px solid var(--border);
+  overflow-y: auto;
+  flex-shrink: 0;
+  padding: 8px 0;
+  scrollbar-width: thin;
+  scrollbar-color: var(--bg4) transparent;
+}
+#sidebar::-webkit-scrollbar { width: 4px; }
+#sidebar::-webkit-scrollbar-thumb { background: var(--bg4); border-radius: 2px; }
+.year-btn {
+  width: 100%;
+  padding: 7px 4px;
+  text-align: center;
+  background: none;
+  color: var(--text3);
+  font-size: 11px;
+  line-height: 1.4;
+  border-left: 3px solid transparent;
+  transition: all .15s;
+}
+.year-btn:hover { color: var(--text2); background: var(--bg2); }
+.year-btn.active { color: var(--accent2); border-left-color: var(--accent); background: var(--bg3); }
+.year-btn .ynum { font-size: 13px; font-weight: 700; display: block; }
+.year-btn .ycnt { font-size: 10px; color: var(--text3); }
+.year-btn.active .ycnt { color: var(--accent); }
+
+/* ─── Content Area ─────────────────────────── */
+#content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px 18px 32px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--bg4) transparent;
+  position: relative;
+}
+#content::-webkit-scrollbar { width: 6px; }
+#content::-webkit-scrollbar-thumb { background: var(--bg4); border-radius: 3px; }
+
+/* ─── Year Section ─────────────────────────── */
+.year-section {
+  margin-bottom: 28px;
+  scroll-margin-top: 16px;
+  content-visibility: auto;
+  contain-intrinsic-size: 0 600px;
+}
+.year-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.year-label {
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--accent2);
+  white-space: nowrap;
+}
+.year-line { flex: 1; height: 1px; background: var(--border); }
+.year-total { font-size: 11px; color: var(--text3); }
+
+/* ─── Season Group ─────────────────────────── */
+.season-group { margin-bottom: 14px; }
+.season-label {
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--text3);
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  margin-bottom: 10px;
+  padding-left: 2px;
+}
+.season-range {
+  font-size: 15px;
+  font-weight: 400;
+  letter-spacing: normal;
+  text-transform: none;
+  opacity: 0.7;
+  margin-left: 4px;
+}
+
+/* ─── Cards Grid ───────────────────────────── */
+.cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  gap: 10px;
+}
+
+/* ─── Card ─────────────────────────────────── */
+.card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  position: relative;
+  overflow: hidden;
+  transition: transform .15s, border-color .15s, box-shadow .15s;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+}
+.card.want-to-watch {
+  border-color: var(--yellow);
+  box-shadow: 0 0 0 1px var(--yellow), 0 4px 16px rgba(245,158,11,.2);
+}
+.card.want-to-watch:hover {
+  box-shadow: 0 0 0 1px var(--yellow), 0 6px 24px rgba(245,158,11,.35);
+}
+.card:hover {
+  transform: translateY(-2px);
+  border-color: var(--accent);
+  box-shadow: 0 6px 24px rgba(124,58,237,.25);
+}
+.card[draggable="true"] { cursor: grab; }
+.card[draggable="true"]:active { cursor: grabbing; }
+.card.dragging { opacity: .35; }
+.cards-grid.reorder-active { outline: 1px dashed var(--border); outline-offset: 6px; border-radius: 8px; }
+
+@keyframes card-flash-pulse {
+  0%, 100% { box-shadow: 0 0 0 2px var(--red), 0 0 14px 3px rgba(239,68,68,.55); }
+  50%      { box-shadow: 0 0 0 2px var(--red), 0 0 26px 8px rgba(239,68,68,.9); }
+}
+.card.flash-target {
+  animation: card-flash-pulse 1.1s ease-in-out infinite;
+  border-color: var(--red);
+}
+
+/* ─── Card Top (image + info) ───────────────── */
+.card-top {
+  display: flex;
+  gap: 0;
+  min-height: 184px;
+}
+
+/* ─── Cover Image ───────────────────────────── */
+.card-cover {
+  width: 130px;
+  min-width: 130px;
+  height: 184px;
+  overflow: hidden;
+  flex-shrink: 0;
+  position: relative;
+  background: var(--bg4);
+}
+.card-cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  transition: opacity .3s;
+}
+.card-cover img[data-src] { opacity: 0; }
+.card-cover img.loaded { opacity: 1; }
+/* Placeholder when no image */
+.cover-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #1a1040 0%, #2d1b69 100%);
+  font-size: 36px;
+  font-weight: 800;
+  color: rgba(167,139,250,.5);
+  font-family: sans-serif;
+  letter-spacing: -1px;
+}
+
+/* ─── Card Body ─────────────────────────────── */
+.card-body {
+  flex: 1;
+  padding: 8px 10px 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.card-title-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 4px;
+}
+.card-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text);
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  cursor: text;
+  flex: 1;
+  min-width: 0;
+}
+.card-title:hover { color: var(--accent3); }
+.card-alias {
+  font-size: 9px;
+  color: var(--text3);
+  line-height: 1.3;
+  margin-top: 1px;
+  opacity: 0.75;
+  letter-spacing: 0.01em;
+}
+.del-btn {
+  flex-shrink: 0;
+  font-size: 12px;
+  background: none;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  cursor: pointer;
+  color: var(--text3);
+  padding: 1px 4px;
+  line-height: 1;
+  transition: all .15s;
+}
+.del-btn:hover {
+  color: #f87171;
+  border-color: #f8717155;
+  background: #f8717111;
+}
+.heart-btn {
+  flex-shrink: 0;
+  font-size: 12px;
+  background: none;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  cursor: pointer;
+  color: var(--text3);
+  padding: 1px 4px;
+  line-height: 1;
+  transition: all .15s;
+}
+.heart-btn:hover {
+  color: var(--yellow);
+  border-color: #f59e0b55;
+  background: #f59e0b11;
+}
+.heart-btn.active {
+  color: var(--yellow);
+}
+
+/* ─── Delete Confirm Modal ───────────────────── */
+#del-modal {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: #000a;
+  z-index: 300;
+  align-items: center;
+  justify-content: center;
+}
+#del-modal.open { display: flex; }
+#del-modal-box {
+  background: var(--bg2);
+  border: 1px solid #f87171;
+  border-radius: 10px;
+  padding: 20px 24px;
+  max-width: 340px;
+  width: 90%;
+  box-shadow: 0 12px 40px #000b;
+}
+#del-modal-title { font-size: 13px; color: var(--text); margin-bottom: 6px; font-weight: 700; }
+#del-modal-name  { font-size: 12px; color: #f87171; margin-bottom: 16px; word-break: break-all; }
+.del-modal-btns  { display: flex; gap: 8px; justify-content: flex-end; }
+.del-cancel { padding: 6px 16px; border-radius: 6px; border: 1px solid var(--border); background: none; color: var(--text2); cursor: pointer; font-size: 12px; }
+.del-cancel:hover { border-color: var(--text2); }
+.del-confirm { padding: 6px 16px; border-radius: 6px; border: none; background: #991b1b; color: #fca5a5; cursor: pointer; font-size: 12px; font-weight: 700; }
+.del-confirm:hover { background: #7f1d1d; }
+
+/* ─── Add News Modal ─────────────────────────── */
+#news-modal {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: #000a;
+  z-index: 300;
+  align-items: center;
+  justify-content: center;
+}
+#news-modal.open { display: flex; }
+#news-modal-box {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 20px 24px;
+  width: 360px;
+  max-width: 94vw;
+  box-shadow: 0 12px 40px #000b;
+}
+#news-modal-box h3 { margin: 0 0 14px; font-size: 14px; color: var(--text); }
+.news-field { margin-bottom: 10px; }
+.news-field label { display: block; font-size: 10px; color: var(--text3); margin-bottom: 4px; }
+.news-field input, .news-field textarea {
+  width: 100%; box-sizing: border-box;
+  background: var(--bg); border: 1px solid var(--border); border-radius: 5px;
+  color: var(--text); font-size: 12px; padding: 6px 9px; outline: none;
+}
+.news-field input:focus, .news-field textarea:focus { border-color: var(--accent); }
+.news-field textarea { resize: vertical; height: 60px; font-family: inherit; }
+.news-modal-btns { display: flex; gap: 8px; justify-content: flex-end; margin-top: 14px; }
+.news-submit { padding: 6px 16px; border-radius: 6px; border: none; background: var(--accent); color: #fff; cursor: pointer; font-size: 12px; font-weight: 700; }
+.news-submit:hover { opacity: .85; }
+#add-news-btn {
+  margin-left: auto;
+  padding: 4px 12px;
+  font-size: 11px;
+  border-radius: 6px;
+  border: 1px solid var(--accent);
+  background: none;
+  color: var(--accent);
+  cursor: pointer;
+  display: none;
+}
+#add-news-btn.visible { display: inline-block; }
+#add-news-btn:hover { background: var(--accent); color: #fff; }
+#add-anime-btn {
+  margin-left: 8px;
+  padding: 4px 12px; font-size: 11px; border-radius: 6px;
+  border: 1px solid var(--green); background: none;
+  color: var(--green); cursor: pointer;
+}
+#add-anime-btn:hover { background: var(--green); color: #000; }
+.scan-btn {
+  margin-left: 8px;
+  padding: 4px 12px; font-size: 11px; border-radius: 6px;
+  background: none; cursor: pointer;
+}
+.scan-btn:disabled { opacity: .5; cursor: not-allowed; }
+#score-update-btn { border: 1px solid var(--blue); color: var(--blue); }
+#score-update-btn:hover:not(:disabled) { background: var(--blue); color: #000; }
+#status-scan-btn { border: 1px solid var(--accent); color: var(--accent3); }
+#status-scan-btn:hover:not(:disabled) { background: var(--accent); color: #fff; }
+#changelog-btn { border: 1px solid var(--text3); color: var(--text2); }
+#changelog-btn:hover { background: var(--bg4); color: var(--text); }
+
+#scanlog-modal {
+  display: none; position: fixed; inset: 0;
+  background: #000a; z-index: 400;
+  align-items: center; justify-content: center;
+}
+#scanlog-modal.open { display: flex; }
+#scanlog-box {
+  background: var(--bg2); border: 1px solid var(--border);
+  border-radius: 12px; padding: 20px 22px;
+  width: min(640px, 94vw); max-height: 85vh; display: flex; flex-direction: column;
+  box-shadow: 0 12px 40px #000b;
+}
+#scanlog-box h3 { margin: 0 0 4px; font-size: 14px; color: var(--text); flex: none; }
+#scanlog-box .scanlog-sub { font-size: 11px; color: var(--text3); margin-bottom: 12px; flex: none; }
+#scanlog-list { overflow-y: auto; flex: 1; display: flex; flex-direction: column; gap: 10px; }
+.scanlog-run { border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; background: var(--bg); }
+.scanlog-run-head { display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: var(--text2); margin-bottom: 6px; }
+.scanlog-run-head b { color: var(--text); }
+.scanlog-empty { text-align: center; color: var(--text3); padding: 30px 0; font-size: 12px; }
+.scanlog-change { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 11.5px; padding: 4px 0; border-top: 1px solid var(--border); }
+.scanlog-change:first-child { border-top: none; }
+.scanlog-change-info { flex: 1; min-width: 0; color: var(--text2); }
+.scanlog-change-info b { color: var(--text); }
+.scanlog-change-info .tag-sugg { color: var(--accent3); font-size: 10px; border: 1px solid var(--accent); border-radius: 4px; padding: 0 5px; margin-right: 5px; }
+.scanlog-change-info .tag-reverted { color: var(--text3); font-size: 10px; border: 1px solid var(--text3); border-radius: 4px; padding: 0 5px; margin-right: 5px; }
+.scanlog-revert-btn {
+  flex: none; padding: 2px 9px; font-size: 10.5px; border-radius: 5px;
+  border: 1px solid var(--red); color: var(--red); background: none; cursor: pointer;
+}
+.scanlog-revert-btn:hover { background: var(--red); color: #fff; }
+#scanlog-close { margin-top: 12px; align-self: flex-end; padding: 5px 16px; border-radius: 6px; border: 1px solid var(--border); background: none; color: var(--text2); cursor: pointer; flex: none; }
+#scanlog-close:hover { color: var(--text); }
+
+#scan-overlay {
+  display: none; position: fixed; inset: 0; background: #000c; z-index: 500;
+  align-items: center; justify-content: center; flex-direction: column; gap: 14px;
+}
+#scan-overlay.open { display: flex; }
+#scan-overlay .spinner {
+  width: 36px; height: 36px; border-radius: 50%;
+  border: 3px solid var(--border); border-top-color: var(--accent);
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+#scan-overlay-text { color: var(--text2); font-size: 12px; }
+#anime-modal {
+  display: none; position: fixed; inset: 0;
+  background: #000a; z-index: 200;
+  align-items: center; justify-content: center;
+}
+#anime-modal.open { display: flex; }
+#anime-modal-box {
+  background: var(--bg2); border: 1px solid var(--border);
+  border-radius: 12px; padding: 22px 24px;
+  width: min(520px, 92vw); max-height: 90vh; overflow-y: auto;
+  box-shadow: 0 12px 40px #000b;
+}
+#anime-modal-box h3 { margin: 0 0 14px; font-size: 14px; color: var(--text); }
+.anime-form-row { display: flex; gap: 10px; }
+.af-select {
+  width: 100%; padding: 6px 8px; font-size: 12px;
+  background: var(--bg); border: 1px solid var(--border);
+  border-radius: 6px; color: var(--text); outline: none;
+}
+.af-select:focus { border-color: var(--accent); }
+.bgm-candidate {
+  display: flex; gap: 10px; align-items: center;
+  padding: 6px 8px; border-radius: 6px; cursor: pointer;
+  border: 1px solid transparent;
+}
+.bgm-candidate:hover { background: var(--bg3); border-color: var(--border); }
+.bgm-candidate img { width: 36px; height: 50px; object-fit: cover; border-radius: 4px; flex-shrink: 0; background: var(--bg3); }
+.bgm-candidate .bc-info { min-width: 0; flex: 1; }
+.bgm-candidate .bc-name { font-size: 12px; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bgm-candidate .bc-meta { font-size: 10px; color: var(--text3); margin-top: 2px; }
+#af-tags-box .af-tag-chip {
+  display: flex; align-items: center; gap: 3px; font-size: 11px;
+  cursor: pointer; white-space: nowrap; margin-bottom: 0;
+}
+#af-tags-box .af-tag-chip input[type="checkbox"] { width: auto; flex-shrink: 0; margin: 0; }
+#af-preview { display: flex; gap: 12px; margin-bottom: 12px; padding: 10px; background: var(--bg); border-radius: 8px; border: 1px solid var(--border); }
+#af-preview img { width: 70px; height: 98px; object-fit: cover; border-radius: 6px; flex-shrink: 0; }
+.title-edit-input {
+  width: 100%;
+  background: var(--bg2);
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 700;
+  padding: 2px 6px;
+  outline: none;
+  line-height: 1.4;
+}
+
+/* ─── Meta row (studio, episodes) ──────────── */
+.card-meta-row {
+  font-size: 10px;
+  color: var(--text3);
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.card-meta-row .dot { opacity: .4; }
+
+
+
+/* ─── Status Tags ────────────────────────────── */
+.card-tags { display: flex; gap: 3px; flex-wrap: wrap; }
+.tag {
+  font-size: 9px;
+  padding: 1px 5px;
+  border-radius: 3px;
+  font-weight: 700;
+  letter-spacing: .3px;
+}
+.tag-movie    { background: #1e3a5f; color: var(--blue); }
+.tag-season   { background: var(--bg4); color: var(--text2); }
+.tag-complete { background: #0f3025; color: var(--green); }
+.tag-partial  { background: #2a1f00; color: var(--yellow); }
+
+/* ─── Scores Row ─────────────────────────────── */
+.card-scores {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+  margin-top: auto;
+}
+.my-score-wrap { display: flex; align-items: center; gap: 4px; }
+.stars { color: var(--yellow); font-size: 9px; letter-spacing: -1px; }
+.score-badge {
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1;
+}
+.s10 { color: #ff6b6b; }
+.s9  { color: #ffa500; }
+.s8  { color: var(--yellow); }
+.s7  { color: #a8d8a8; }
+.s6  { color: var(--green); }
+.s5  { color: var(--text2); }
+.slow{ color: var(--text3); }
+.bgm-score {
+  font-size: 10px;
+  color: var(--text3);
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+.bgm-score strong { color: #7ec8e3; font-size: 11px; }
+.mal-score {
+  font-size: 10px;
+  color: var(--text3);
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+.mal-score strong { color: #e8b65a; font-size: 11px; }
+
+/* ─── Progress Bar ─────────────────────────── */
+.card-bottom {
+  padding: 0 10px 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.progress-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.progress-bar {
+  flex: 1;
+  height: 4px;
+  background: var(--bg4);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.progress-fill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width .3s;
+}
+.fill-complete { background: var(--green); }
+.fill-partial  { background: var(--yellow); }
+.fill-low      { background: var(--accent3); opacity: .55; }
+.fill-unknown  { background: repeating-linear-gradient(-45deg, var(--text3) 0px, var(--text3) 3px, transparent 3px, transparent 7px); opacity: .8; }
+.progress-text { font-size: 10px; color: var(--text2); white-space: nowrap; }
+.progress-wrap { cursor: text; }
+.prog-input {
+  width: 40px; font-size: 10px; padding: 1px 4px;
+  background: var(--bg); border: 1px solid var(--accent);
+  border-radius: 3px; color: var(--text); outline: none; text-align: center;
+}
+.prog-sep { font-size: 10px; color: var(--text2); margin: 0 2px; }
+.prog-done-btn {
+  font-size: 9px; padding: 1px 6px; border-radius: 3px;
+  border: 1px solid var(--green); color: var(--green);
+  background: none; cursor: pointer; margin-left: 4px;
+}
+.prog-done-btn:hover { background: var(--green); color: #000; }
+
+/* ─── Comment ───────────────────────────────── */
+.card-comment {
+  display: none;
+}
+
+.card-comment { cursor: text; }
+.card-comment:hover { color: var(--text2); }
+.comment-placeholder { opacity: .3; font-style: italic; }
+.comment-edit-area {
+  width: 100%; box-sizing: border-box;
+  background: var(--bg); border: 1px solid var(--accent);
+  border-radius: 4px; color: var(--text); font-size: 10px;
+  padding: 4px 6px; resize: vertical; min-height: 48px;
+  font-family: inherit; outline: none; display: block;
+}
+
+/* ─── Info (expandable, production notes) ───── */
+.card-info {
+  font-size: 10px;
+  color: var(--text3);
+  line-height: 1.55;
+  display: none;
+  border-top: 1px solid var(--border);
+  padding-top: 5px;
+  margin-top: 2px;
+}
+.card-info-label {
+  font-size: 9px;
+  font-style: normal;
+  font-weight: 600;
+  color: var(--accent);
+  margin-right: 5px;
+  opacity: .8;
+}
+.card.expanded .card-info { display: block; }
+
+/* ─── Synopsis (expandable) ─────────────────── */
+.card-synopsis {
+  font-size: 10px;
+  color: var(--text3);
+  line-height: 1.6;
+  display: none;
+  border-top: 1px solid var(--border);
+  padding-top: 6px;
+  margin-top: 2px;
+}
+.card.expanded .card-synopsis { display: block; }
+.card.expanded .card-comment  { display: none; }
+
+/* ─── Unified Tags ───────────────────────────── */
+.user-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  font-size: 9px;
+  padding: 1px 5px;
+  border-radius: 3px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: default;
+  color: var(--accent3);
+  border: 1px solid #c4b5fd44;
+  background: #c4b5fd18;
+}
+.user-tag .rm-tag {
+  cursor: pointer;
+  opacity: 0;
+  font-size: 10px;
+  margin-left: 1px;
+  line-height: 1;
+  transition: opacity .15s;
+}
+.user-tag:hover .rm-tag { opacity: .7; }
+.user-tag:hover .rm-tag:hover { opacity: 1; color: #f87171; }
+.add-tag-btn {
+  font-size: 11px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  color: var(--text3);
+  background: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  padding: 0;
+}
+.add-tag-btn:hover { border-color: var(--accent3); color: var(--accent3); }
+
+/* ─── Tag Picker Popup ───────────────────────── */
+#tag-picker {
+  position: fixed;
+  z-index: 200;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px;
+  width: 220px;
+  box-shadow: 0 8px 24px #000a;
+  display: none;
+}
+#tag-picker-input {
+  width: 100%;
+  box-sizing: border-box;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text);
+  font-size: 11px;
+  padding: 4px 7px;
+  outline: none;
+  margin-bottom: 6px;
+}
+#tag-picker-cats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  max-height: 140px;
+  overflow-y: auto;
+}
+#tag-picker-cats:empty { display: none; }
+.picker-cat-chip {
+  font-size: 9px;
+  padding: 2px 7px;
+  border-radius: 3px;
+  cursor: pointer;
+  font-weight: 600;
+  border: 1px solid transparent;
+  opacity: .7;
+  transition: opacity .1s;
+}
+.picker-cat-chip:hover { opacity: 1; }
+
+/* ─── Category Tag on card ─────────────────── */
+.cat-tag {
+  font-size: 9px;
+  padding: 1px 6px;
+  border-radius: 3px;
+  font-weight: 700;
+  letter-spacing: .3px;
+  white-space: nowrap;
+  opacity: .9;
+}
+
+/* ─── Category Filter Bar ───────────────────── */
+#cat-bar {
+  background: #0f0f22;
+  border-bottom: 1px solid var(--border);
+  padding: 6px 12px;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+.cat-btn {
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+  border: 1px solid var(--border);
+  background: var(--bg3);
+  color: var(--text2);
+  transition: all .15s;
+  flex-shrink: 0;
+}
+.cat-btn:hover { border-color: var(--accent2); color: var(--accent3); }
+.cat-btn.on { border-color: currentColor; opacity: 1; }
+#cat-label {
+  font-size: 10px;
+  color: var(--text3);
+  white-space: nowrap;
+  margin-right: 4px;
+  flex-shrink: 0;
+}
+
+/* ─── News Card ─────────────────────────────── */
+.news-card {
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+}
+.news-icon {
+  font-size: 20px;
+  margin-right: 12px;
+  flex-shrink: 0;
+  opacity: .7;
+}
+.news-link {
+  display: block;
+  color: var(--accent3);
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+  line-height: 1.4;
+  word-break: break-all;
+}
+.news-link:hover { text-decoration: underline; }
+.news-domain {
+  font-size: 11px;
+  color: var(--text3);
+  margin-top: 3px;
+}
+
+/* ─── Empty State ───────────────────────────── */
+#empty-state {
+  display: none;
+  text-align: center;
+  padding: 80px 20px;
+  color: var(--text3);
+}
+#empty-state .empty-icon { font-size: 48px; margin-bottom: 12px; }
+#empty-state p { font-size: 14px; }
+
+
+/* ─── Scrollbar ─────────────────────────────── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--bg4); border-radius: 3px; }
+
+/* ─── Responsive ─────────────────────────────── */
+@media (max-width: 600px) {
+  #sidebar { width: 52px; }
+  #site-title { font-size: 16px; }
+  .cards-grid { grid-template-columns: 1fr; }
+  #search-box { width: 140px; }
+}
+
+/* ─── Detail Modal ────────────────────────────── */
+#detail-overlay {
+  display: none; position: fixed; inset: 0;
+  background: rgba(0,0,0,.75); z-index: 200;
+}
+#detail-overlay.open { display: block; }
+
+#detail-box {
+  display: none; position: fixed;
+  left: 50%; top: 50%;
+  transform: translate(-50%, -50%);
+  width: min(700px, 95vw);
+  max-height: 90vh;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  z-index: 201;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 24px 64px rgba(0,0,0,.75);
+}
+#detail-box.open { display: flex; }
+
+#detail-close {
+  position: absolute; top: 10px; right: 12px;
+  background: none; border: none; color: var(--text3);
+  font-size: 16px; cursor: pointer; z-index: 1;
+  width: 28px; height: 28px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  transition: background .15s, color .15s;
+}
+#detail-close:hover { background: var(--bg4); color: var(--text); }
+
+#detail-header {
+  display: flex; gap: 0;
+  padding: 20px 20px 14px;
+  flex-shrink: 0;
+  background: linear-gradient(135deg, var(--bg3) 0%, var(--bg2) 100%);
+}
+
+#detail-cover {
+  width: 150px; min-width: 150px; height: 213px;
+  border-radius: 8px; overflow: hidden;
+  background: var(--bg4); flex-shrink: 0;
+  margin-right: 18px;
+  box-shadow: 0 6px 20px rgba(0,0,0,.5);
+}
+#detail-cover img { width: 100%; height: 100%; object-fit: cover; display: block; }
+#detail-cover .dm-placeholder {
+  width: 100%; height: 100%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 36px; font-weight: 900;
+  color: rgba(167,139,250,.35);
+  background: linear-gradient(135deg, #1a1040 0%, #2d1b69 100%);
+}
+
+#detail-meta {
+  flex: 1; min-width: 0; padding-right: 32px;
+  display: flex; flex-direction: column; gap: 5px;
+}
+#dm-title {
+  font-size: 15px; font-weight: 700; color: var(--text);
+  line-height: 1.3; word-break: break-all;
+}
+#dm-subtitle { font-size: 11px; color: var(--text3); }
+#dm-tags { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 1px; }
+#dm-aliases {
+  font-size: 10px; color: var(--text3); line-height: 1.4;
+  overflow: hidden; display: -webkit-box;
+  -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+}
+#dm-scores {
+  display: flex; gap: 12px; align-items: baseline; font-size: 11px; color: var(--text2);
+}
+#dm-scores strong { font-size: 13px; }
+#dm-scores .dm-bgm-score strong { color: var(--blue); }
+.dm-editable { cursor: pointer; border-radius: 4px; padding: 1px 4px; margin: -1px -4px; transition: background .15s; }
+.dm-editable:hover { background: var(--bg4); }
+#dm-prog-wrap {
+  display: flex; align-items: center; gap: 8px; margin-top: auto;
+  cursor: pointer; border-radius: 4px; padding: 3px 4px; margin-left: -4px; margin-right: -4px; transition: background .15s;
+}
+#dm-prog-wrap:hover { background: var(--bg4); }
+#dm-prog-bar {
+  flex: 1; height: 5px; background: var(--bg4); border-radius: 3px; overflow: hidden;
+}
+#dm-prog-fill { height: 100%; border-radius: 3px; transition: width .3s; }
+#dm-prog-text { font-size: 11px; color: var(--text2); white-space: nowrap; }
+.dm-score-input {
+  width: 44px; font-size: 12px; padding: 2px 6px;
+  background: var(--bg); border: 1px solid var(--accent);
+  border-radius: 3px; color: var(--text); outline: none; text-align: center;
+}
+
+/* Tabs */
+#detail-tabs {
+  display: flex; gap: 0;
+  padding: 0 20px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0; background: var(--bg2);
+}
+.dtab {
+  background: none; border: none; cursor: pointer;
+  padding: 8px 14px;
+  font-size: 12px; font-weight: 600;
+  color: var(--text3);
+  border-radius: 6px 6px 0 0;
+  transition: color .15s, background .15s;
+  position: relative;
+}
+.dtab:hover { color: var(--text2); }
+.dtab.active { color: var(--accent2); }
+.dtab.active::after {
+  content: ''; position: absolute; bottom: -1px; left: 0; right: 0;
+  height: 2px; background: var(--accent); border-radius: 2px 2px 0 0;
+}
+
+/* Tab content */
+#detail-content {
+  flex: 1; overflow-y: auto; padding: 14px 20px;
+  min-height: 80px; max-height: 220px;
+  font-size: 13px; color: var(--text2); line-height: 1.7;
+}
+.dm-placeholder { color: var(--text3); font-style: italic; }
+#dm-comment-edit-btn {
+  margin-top: 10px; padding: 5px 12px;
+  background: var(--bg3); border: 1px solid var(--border);
+  color: var(--text2); border-radius: 5px; cursor: pointer; font-size: 11px;
+  transition: border-color .15s, color .15s;
+}
+#dm-comment-edit-btn:hover { border-color: var(--accent); color: var(--accent2); }
+#dm-comment-ta {
+  width: 100%; min-height: 90px;
+  background: var(--bg3); border: 1px solid var(--accent);
+  color: var(--text); border-radius: 6px; padding: 8px;
+  font-size: 13px; line-height: 1.65; resize: vertical;
+  box-sizing: border-box; outline: none; margin-top: 4px;
+}
+.dm-edit-btns { display: flex; gap: 8px; margin-top: 8px; }
+
+/* Series strip */
+#detail-series {
+  flex-shrink: 0;
+  border-top: 1px solid var(--border);
+  padding: 10px 0 14px;
+  background: var(--bg2);
+}
+#dm-series-label {
+  font-size: 10px; font-weight: 700; letter-spacing: .8px;
+  color: var(--text3); padding: 0 20px 8px; text-transform: uppercase;
+}
+#dm-series-scroll {
+  display: flex; gap: 10px;
+  overflow-x: auto; padding: 2px 20px 4px;
+  scrollbar-width: thin; scrollbar-color: var(--bg4) transparent;
+}
+#dm-series-scroll::-webkit-scrollbar { height: 3px; }
+#dm-series-scroll::-webkit-scrollbar-thumb { background: var(--bg4); border-radius: 2px; }
+
+.series-thumb {
+  flex-shrink: 0; width: 70px; cursor: pointer;
+  display: flex; flex-direction: column; gap: 4px;
+  text-align: center; opacity: .55;
+  transition: opacity .15s, transform .15s;
+}
+.series-thumb:hover { opacity: .9; transform: translateY(-2px); }
+.series-thumb.dm-active { opacity: 1; }
+.series-thumb.dm-active .series-thumb-img {
+  outline: 2px solid var(--accent); outline-offset: 2px;
+}
+.series-thumb-img {
+  width: 70px; height: 99px; border-radius: 5px; overflow: hidden;
+  background: var(--bg4);
+}
+.series-thumb-img img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.series-thumb-img .dm-placeholder { font-size: 16px; }
+.series-thumb-label {
+  font-size: 9px; color: var(--text2); line-height: 1.3;
+  overflow: hidden; display: -webkit-box;
+  -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+}
+.series-thumb-badge {
+  font-size: 8px; border-radius: 3px; padding: 1px 4px;
+  display: inline-block; line-height: 1.4;
+  color: var(--blue); background: rgba(96,165,250,.12);
+}
+.series-thumb-badge.movie { color: var(--yellow); background: rgba(245,158,11,.12); }
+.series-thumb-badge.ova   { color: var(--green);  background: rgba(16,185,129,.12); }
+.series-thumb-badge.short { color: var(--text3);  background: var(--bg4); }
+.series-thumb-badge.upcoming { color: var(--accent2); background: rgba(167,139,250,.15); }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- Header -->
+  <div id="header">
+    <div id="header-top">
+      <span id="site-title">MY RECORDS</span>
+      <span id="header-stats"></span>
+      <span id="last-updated" ondblclick="startEditLastUpdated()" title="雙擊可編輯"></span>
+      <span id="server-status" title="伺服器狀態">⬤ 連線中<span id="server-countdown" style="opacity:.45;font-size:9px"></span></span>
+      <span id="server-help">?
+        <div id="server-help-tip">
+          <div class="sht-row"><span style="color:#4ade80">⬤</span> 伺服器運作中 — 正常，只有 1 個</div>
+          <div class="sht-row"><span style="color:#fb923c">⬤</span> 伺服器 ×N（建議重開） — 多個殘留，請重開 .bat</div>
+          <div class="sht-row"><span style="color:#f87171">⬤</span> 伺服器未連線 — 請執行開啟動畫紀錄.bat</div>
+        </div>
+      </span>
+    </div>
+    <div id="nav-tabs">
+      <button class="nav-tab active">
+        動畫 <span class="tab-count" id="anime-count">0</span>
+      </button>
+      <button class="nav-tab" onclick="window.location.href='../漫畫/comic_web.html'">
+        漫畫 <span class="tab-count" id="manga-count"></span>
+      </button>
+      <button class="nav-tab" onclick="window.location.href='../遊戲/game_web.html'">
+        遊戲 <span class="tab-count" id="game-count"></span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Filter Bar -->
+  <div id="filter-bar">
+    <input id="search-box" type="text" placeholder="搜尋動畫名稱…" oninput="applyFilters()">
+    <div class="filter-sep"></div>
+    <div class="filter-group" id="score-filters"></div>
+    <div class="filter-sep"></div>
+    <div class="filter-group" id="type-filters">
+      <button class="filt-btn on" id="type-btn-series" onclick="toggleShowType('series')" title="點擊可切換是否顯示連載動畫">連載</button>
+      <button class="filt-btn on" id="type-btn-movie" onclick="toggleShowType('movie')" title="點擊可切換是否顯示劇場版">劇場版</button>
+      <button class="filt-btn" id="type-btn-ova" onclick="toggleShowType('ova')" title="預設隱藏 OVA/特別篇，點擊可切換顯示">OVA・特番</button>
+      <button class="filt-btn" id="type-btn-short_anime" onclick="toggleShowType('short_anime')" title="預設隱藏，點擊可切換是否顯示泡麵番/短篇動畫">泡麵番</button>
+    </div>
+    <div class="filter-sep"></div>
+    <div class="filter-group" id="status-filters">
+      <button class="filt-btn on" id="status-btn-complete" onclick="toggleShowStatus('complete')" title="點擊可切換是否顯示已看完的動畫">看完</button>
+      <button class="filt-btn on" id="status-btn-partial" onclick="toggleShowStatus('partial')" title="點擊可切換是否顯示看一半的動畫">看一半</button>
+      <button class="filt-btn on" id="status-btn-unwatched" onclick="toggleShowStatus('unwatched')" title="點擊可切換是否顯示未看的動畫">未看</button>
+      <div class="filter-sep"></div>
+      <button class="filt-btn" id="news-mode-btn" onclick="toggleNewsMode()">公告/消息</button>
+      <button id="add-news-btn" onclick="openNewsModal()">＋ 新增公告</button>
+    </div>
+    <div class="filter-sep"></div>
+    <button class="filt-btn" id="reorder-toggle-btn" onclick="toggleReorderMode()" title="開啟後可在同一個年份/季度區塊內拖曳卡片調整顯示順序">🔀 排序模式</button>
+    <span class="sort-hint">?
+      <div class="sort-hint-tip">
+        <div class="sht-title">每季度排序原則</div>
+        <div class="sht-item">1. 季度數字（N越高排越前面）</div>
+        <div class="sht-item">2. 想看程度（最想看最優先 &gt;&gt; 稍微想看）</div>
+        <div class="sht-item">3. 異世界(劍與魔法) &gt; 惡役千金 &gt; 校園戀愛 &gt; 戀愛 &gt; 輕百合 &gt; 青年熱血 &gt; 賣肉 &gt; 其他</div>
+        <div class="sht-item">4. OVA、特別篇</div>
+        <div class="sht-item">5. 劇場版</div>
+      </div>
+    </span>
+    <span id="result-count"></span>
+    <button class="scan-btn" id="changelog-btn" onclick="openChangeLogModal()">📋 變更紀錄</button>
+    <button class="scan-btn" id="score-update-btn" onclick="runScoreUpdate()">💯 分數更新</button>
+    <button class="scan-btn" id="status-scan-btn" onclick="runStatusScan()">🔍 狀態掃描</button>
+    <button id="add-anime-btn" onclick="openAnimeModal()">＋ 新增動畫</button>
+  </div>
+
+  <!-- 執行中遮罩 -->
+  <div id="scan-overlay">
+    <div class="spinner"></div>
+    <div id="scan-overlay-text">執行中…</div>
+  </div>
+
+  <!-- 變更紀錄 Modal -->
+  <div id="scanlog-modal">
+    <div id="scanlog-box">
+      <h3>📋 變更紀錄</h3>
+      <div class="scanlog-sub">自動化按鈕（狀態掃描／分數更新）留下的變更記錄，可個別還原</div>
+      <div id="scanlog-list"></div>
+      <button id="scanlog-close" onclick="closeChangeLogModal()">關閉</button>
+    </div>
+  </div>
+
+  <!-- Add Anime Modal -->
+  <div id="anime-modal">
+    <div id="anime-modal-box">
+      <h3>新增動畫</h3>
+      <div class="anime-form-row">
+        <div class="news-field" style="flex:1">
+          <label>動畫名稱（必填，建議先用中文/日文/英文都試試）</label>
+          <input id="af-title" type="text" placeholder="例：孤獨搖滾！">
+        </div>
+      </div>
+      <div class="news-modal-btns" style="justify-content:flex-start;margin-top:0;margin-bottom:14px">
+        <button class="news-submit" id="af-search-btn" onclick="searchBgmForAdd()">🔍 查詢 bgm.tv</button>
+      </div>
+
+      <div id="af-candidates"></div>
+      <div id="af-warning" style="display:none;font-size:12px;color:var(--red);margin-bottom:12px"></div>
+
+      <div id="af-detail-form" style="display:none">
+        <div id="af-preview"></div>
+
+        <div class="anime-form-row">
+          <div class="news-field" style="flex:1">
+            <label>年份</label>
+            <input id="af-year" type="number" placeholder="2024" min="1990" max="2099">
+          </div>
+          <div class="news-field" style="flex:1">
+            <label>季節</label>
+            <select id="af-season" class="af-select">
+              <option value="">不指定</option>
+              <option value="春">春</option>
+              <option value="夏">夏</option>
+              <option value="秋">秋</option>
+              <option value="冬">冬</option>
+            </select>
+          </div>
+          <div class="news-field" style="flex:1">
+            <label>月份</label>
+            <input id="af-month" type="number" placeholder="10" min="1" max="12">
+          </div>
+        </div>
+        <div class="anime-form-row">
+          <div class="news-field" style="flex:1">
+            <label>類型</label>
+            <select id="af-type" class="af-select">
+              <option value="series">連載</option>
+              <option value="movie">劇場版</option>
+              <option value="ova">OVA/特番</option>
+              <option value="short_anime">泡麵番/短篇</option>
+            </select>
+          </div>
+          <div class="news-field" style="flex:1">
+            <label>總集數</label>
+            <input id="af-total" type="text" placeholder="12">
+          </div>
+          <div class="news-field" style="flex:1">
+            <label>已看集數（可選）</label>
+            <input id="af-watched" type="text" placeholder="預設0">
+          </div>
+        </div>
+        <div class="anime-form-row">
+          <div class="news-field" style="flex:1">
+            <label>個人評分（可選，不是bgm評分）</label>
+            <input id="af-score" type="number" placeholder="尚未看" min="1" max="10" step="0.5">
+          </div>
+        </div>
+
+        <div class="news-field">
+          <label>標籤（可先不填，之後再查證補上）</label>
+          <div id="af-tags-box" style="max-height:130px;overflow-y:auto;border:1px solid var(--border);border-radius:6px;padding:8px;display:flex;flex-wrap:wrap;gap:4px 10px"></div>
+        </div>
+
+        <div class="news-field">
+          <label>個人評論（可選）</label>
+          <textarea id="af-comment" placeholder="寫點什麼…"></textarea>
+        </div>
+
+        <div class="news-field">
+          <label>bgm 簡介（原始資料，簡體未校對，建議之後再潤飾成繁體百科敘述）</label>
+          <textarea id="af-synopsis-preview" readonly style="height:70px;opacity:.8"></textarea>
+        </div>
+
+        <div id="af-infobox-ref" class="news-field" style="font-size:10px;color:var(--text3);line-height:1.6"></div>
+      </div>
+
+      <div class="news-modal-btns">
+        <button class="del-cancel" onclick="closeAnimeModal()">取消</button>
+        <button class="news-submit" id="af-submit-btn" style="display:none" onclick="submitAnimeVerified()">新增動畫</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add News Modal -->
+  <div id="news-modal">
+    <div id="news-modal-box">
+      <h3 id="news-modal-heading">新增公告 / 消息</h3>
+      <div class="news-field">
+        <label>網址（必填）</label>
+        <input id="news-url" type="url" placeholder="https://...">
+      </div>
+      <div class="news-field">
+        <label>說明（選填）</label>
+        <textarea id="news-desc" placeholder="簡短說明這個連結…"></textarea>
+      </div>
+      <div class="news-modal-btns">
+        <button class="del-cancel" onclick="closeNewsModal()">取消</button>
+        <button class="news-submit" onclick="submitNews()">新增</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Delete Confirm Modal -->
+  <div id="del-modal">
+    <div id="del-modal-box">
+      <div id="del-modal-title">確定要刪除這部動畫嗎？</div>
+      <div id="del-modal-name"></div>
+      <div class="del-modal-btns">
+        <button class="del-cancel" onclick="closeDelModal()">取消</button>
+        <button class="del-confirm" onclick="executeDelete()">確定刪除</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tag Picker Popup -->
+  <div id="tag-picker">
+    <input id="tag-picker-input" placeholder="輸入標籤，按 Enter 新增…">
+    <div id="tag-picker-cats"></div>
+  </div>
+
+  <!-- Category Filter Bar -->
+  <div id="cat-bar">
+    <span id="cat-label">類別：</span>
+    <button class="cat-btn on" data-cat="all" onclick="setCat(this)" style="color:var(--text2)">全部</button>
+  </div>
+
+  <!-- Main -->
+  <div id="main">
+    <!-- Year Sidebar -->
+    <div id="sidebar"></div>
+
+    <!-- Content -->
+    <div id="content"></div>
+  </div>
+</div>
+
+<script>
+// ─── Title Edit (直接 POST 給 server.py) ─────────────────────────────────────
+function startEditProgress(event, title) {
+  event.stopPropagation();
+  const wrap = event.currentTarget;
+  if (wrap.querySelector('.prog-input')) return;
+  const e = data.find(x => x.title === title);
+  const curW = e?.progress_watched ?? '';
+  const curT = e?.progress_total  ?? '';
+
+  const inW = document.createElement('input');
+  inW.className = 'prog-input'; inW.value = curW; inW.placeholder = '已看';
+  const sep = document.createElement('span');
+  sep.className = 'prog-sep'; sep.textContent = '/';
+  const inT = document.createElement('input');
+  inT.className = 'prog-input'; inT.value = curT; inT.placeholder = '總集';
+  const doneBtn = document.createElement('button');
+  doneBtn.className = 'prog-done-btn'; doneBtn.textContent = '完結';
+  doneBtn.onclick = () => {
+    const t = inT.value.trim();
+    if (t && t !== 'V' && !isNaN(Number(t)) && Number(t) > 0) {
+      inW.value = t;
+    } else {
+      inW.value = 'V'; inT.value = 'V';
+    }
+    save();
+  };
+
+  wrap.innerHTML = '';
+  wrap.append(inW, sep, inT, doneBtn);
+  inW.focus(); inW.select();
+
+  async function save() {
+    const w = inW.value.trim();
+    const t = inT.value.trim();
+    try {
+      const res = await fetch('http://localhost:3737/api/save-progress', {
+        method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ title, watched: w, total: t })
+      });
+      const j = await res.json();
+      if (e) {
+        e.progress_watched = w || null;
+        e.progress_total   = t || null;
+        e.progress_pct     = j.pct ?? null;
+      }
+    } catch { alert('無法連線到伺服器'); }
+    // 重繪進度列
+    const pct = e?.progress_pct;
+    const pctNum = pct || 0;
+    if (w) {
+      wrap.innerHTML = `<div class="progress-bar"><div class="progress-fill ${fillClass(pct, w)}" style="width:${w === '?' ? 40 : pctNum}%"></div></div><span class="progress-text" ${w === '?' ? 'style="color:var(--accent)"' : ''}>${w}/${t}</span>`;
+    } else {
+      wrap.innerHTML = `<span class="comment-placeholder" style="font-size:10px">雙擊新增進度…</span>`;
+    }
+  }
+
+  let _saved = false;
+  function maybeSave() {
+    setTimeout(() => {
+      if (!wrap.contains(document.activeElement) && !_saved) {
+        _saved = true; save();
+      }
+    }, 120);
+  }
+  inW.addEventListener('blur', maybeSave);
+  inT.addEventListener('blur', maybeSave);
+
+  inW.addEventListener('keydown', ev => { if (ev.key === 'Enter') inT.focus(); });
+  inT.addEventListener('keydown', ev => {
+    if (ev.key === 'Enter') { _saved = true; save(); }
+    if (ev.key === 'Escape') {
+      _saved = true;
+      wrap.innerHTML = curW
+        ? `<div class="progress-bar"><div class="progress-fill ${fillClass(e?.progress_pct, curW)}" style="width:${curW === '?' ? 40 : (e?.progress_pct||0)}%"></div></div><span class="progress-text" ${curW === '?' ? 'style="color:var(--accent)"' : ''}>${curW}/${curT}</span>`
+        : `<span class="comment-placeholder" style="font-size:10px">雙擊新增進度…</span>`;
+    }
+  });
+}
+
+function startEditComment(event, title) {
+  event.stopPropagation();
+  const el = event.currentTarget;
+  if (el.querySelector('textarea')) return;
+  const e = data.find(x => x.title === title);
+  const current = e ? (e.comment || '') : '';
+
+  const ta = document.createElement('textarea');
+  ta.className = 'comment-edit-area';
+  ta.value = current;
+  el.innerHTML = '';
+  el.appendChild(ta);
+  ta.focus();
+  ta.setSelectionRange(ta.value.length, ta.value.length);
+
+  async function save() {
+    const val = ta.value.trim();
+    if (e) e.comment = val;
+    el.innerHTML = val ? escHtml(val) : '<span class="comment-placeholder">雙擊新增評論…</span>';
+    try {
+      await fetch('http://localhost:3737/api/save-comment', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ title, comment: val })
+      });
+    } catch { alert('無法連線到伺服器'); }
+  }
+
+  ta.addEventListener('blur', save);
+  ta.addEventListener('keydown', ev => {
+    if (ev.key === 'Escape') {
+      el.innerHTML = current ? escHtml(current) : '<span class="comment-placeholder">雙擊新增評論…</span>';
+    }
+  });
+}
+
+function startEditTitle(el, origTitle) {
+  if (el.querySelector('input')) return;
+  const current = el.textContent;
+  el.style.display = 'block';
+  el.style.webkitLineClamp = 'unset';
+  el.style.overflow = 'visible';
+
+  const input = document.createElement('input');
+  input.className = 'title-edit-input';
+  input.value = current;
+  el.textContent = '';
+  el.appendChild(input);
+  input.focus();
+  input.select();
+
+  let committed = false;
+  const commit = async () => {
+    if (committed) return;
+    committed = true;
+    const val = input.value.trim();
+
+    const restore = () => {
+      el.textContent = current;
+      el.style.display = '';
+      el.style.webkitLineClamp = '';
+      el.style.overflow = '';
+    };
+
+    if (!val || val === origTitle) { restore(); return; }
+
+    // 樂觀更新 UI
+    el.textContent = val;
+    el.style.display = '';
+    el.style.webkitLineClamp = '';
+    el.style.overflow = '';
+
+    try {
+      const res = await fetch('http://localhost:3737/api/save-title', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ old: origTitle, new: val })
+      });
+      const json = await res.json();
+      if (!json.ok) {
+        alert('儲存失敗：' + json.error);
+        el.textContent = current;
+      }
+      // 更新 ondblclick 的 origTitle 讓下次再改也能找到
+      el.setAttribute('ondblclick', `startEditTitle(this,'${val.replace(/'/g,"&#39;")}')`);
+    } catch {
+      alert('無法連線到伺服器，請確認 python server.py 已啟動。');
+      el.textContent = current;
+    }
+  };
+
+  input.addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.preventDefault(); commit(); }
+    if (e.key === 'Escape') {
+      committed = true;
+      el.textContent = current;
+      el.style.display = '';
+      el.style.webkitLineClamp = '';
+      el.style.overflow = '';
+    }
+  });
+  input.addEventListener('blur', commit);
+  input.addEventListener('click', e => e.stopPropagation());
+}
+
+// ─── Unified Tag System ───────────────────────────────────────────────────────
+
+function getEffectiveTags(e) {
+  return e.user_tags || [];
+}
+
+function renderCatTags(e) {
+  return (e.tags || []).map(id => {
+    const cat = CATS[id];
+    if (!cat) return '';
+    const tq = e.title.replace(/'/g, "\\'");
+    const idEsc = escHtml(id).replace(/'/g, "\\'");
+    return `<span class="cat-tag" style="background:${cat.color}22;color:${cat.color};border:1px solid ${cat.color}44">${cat.label}<span class="rm-tag" onclick="removeCatTag(event,'${tq}','${idEsc}')">×</span></span>`;
+  }).join('');
+}
+
+function renderUserTags(e) {
+  const tq = e.title.replace(/'/g, "\\'");
+  const tagHtml = getEffectiveTags(e).map(t => {
+    const tEsc = escHtml(t).replace(/'/g, "\\'");
+    return `<span class="user-tag">${escHtml(t)}<span class="rm-tag" onclick="removeUserTag(event,'${tq}','${tEsc}')">×</span></span>`;
+  }).join('');
+  return tagHtml + `<button class="add-tag-btn" onclick="openTagPicker(event,'${tq}')">+</button>`;
+}
+
+function getTagsContainer(title) {
+  return document.getElementById('tags-' + title.replace(/['"<>&]/g, '_'));
+}
+
+function rerenderCardTags(e) {
+  const c = getTagsContainer(e.title);
+  if (!c) return;
+  c.innerHTML = renderCatTags(e) + renderUserTags(e);
+}
+
+async function postCatTags(title, tags) {
+  try {
+    await fetch('http://localhost:3737/api/save-cat-tags', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ title, tags })
+    });
+    rebuildUserTagBtns();
+  } catch { alert('無法連線到伺服器，請確認 server.py 已啟動。'); }
+}
+
+function removeCatTag(event, title, tagId) {
+  event.stopPropagation();
+  const e = data.find(x => x.title === title);
+  if (!e) return;
+  e.tags = (e.tags || []).filter(t => t !== tagId);
+  e.primary_tag = e.tags[0] || null;
+  postCatTags(title, e.tags);
+  rerenderCardTags(e);
+}
+
+async function addCatTag(title, tagId) {
+  const e = data.find(x => x.title === title);
+  if (!e) return;
+  if ((e.tags || []).includes(tagId)) return;
+  e.tags = [...(e.tags || []), tagId];
+  e.primary_tag = e.tags[0];
+  await postCatTags(title, e.tags);
+  rerenderCardTags(e);
+}
+
+// ── Tag Picker ────────────────────────────────────────────────────────────────
+let _pickerTitle = null;
+let _pickerCloseTimer = null;
+
+function openTagPicker(ev, title) {
+  ev.stopPropagation();
+  _pickerTitle = title;
+  const btn = ev.currentTarget;
+  const picker = document.getElementById('tag-picker');
+  const inp = document.getElementById('tag-picker-input');
+
+  const e = data.find(x => x.title === title);
+  inp.value = '';
+  inp.onkeydown = async (kev) => {
+    if (kev.key === 'Enter') {
+      const val = inp.value.trim();
+      if (!val) return;
+      if (!e.user_tags) e.user_tags = [];
+      if (!e.user_tags.includes(val)) {
+        e.user_tags.push(val);
+        await postTags(title, e.user_tags);
+        rerenderCardTags(e);
+      }
+      inp.value = '';
+    }
+    if (kev.key === 'Escape') closeTagPicker();
+  };
+
+  // 填入預設分類選項（排除已有的）
+  const catsDiv = document.getElementById('tag-picker-cats');
+  catsDiv.innerHTML = '';
+  const applied = new Set(e ? (e.tags || []) : []);
+  Object.entries(CATS).forEach(([id, cat]) => {
+    if (applied.has(id)) return;
+    const chip = document.createElement('span');
+    chip.className = 'picker-cat-chip';
+    chip.textContent = cat.label;
+    chip.style.color = cat.color;
+    chip.style.borderColor = cat.color + '60';
+    chip.style.background = cat.color + '18';
+    chip.onclick = async () => {
+      await addCatTag(title, id);
+      chip.remove();
+    };
+    catsDiv.appendChild(chip);
+  });
+
+  const rect = btn.getBoundingClientRect();
+  picker.style.display = 'block';
+  const pw = picker.offsetWidth;
+  let left = rect.left;
+  if (left + pw > window.innerWidth - 8) left = window.innerWidth - pw - 8;
+  picker.style.left = left + 'px';
+  picker.style.top = (rect.bottom + 6) + 'px';
+
+  setTimeout(() => document.addEventListener('click', _pickerOutside, { once: true }), 0);
+  inp.focus();
+}
+
+function _pickerOutside(ev) {
+  const picker = document.getElementById('tag-picker');
+  if (!picker.contains(ev.target)) closeTagPicker();
+  else document.addEventListener('click', _pickerOutside, { once: true });
+}
+
+async function removeUserTag(ev, title, tag) {
+  ev.stopPropagation();
+  const e = data.find(x => x.title === title);
+  if (!e) return;
+  if (!e.user_tags || e.user_tags.length === 0) e.user_tags = getEffectiveTags(e);
+  e.user_tags = e.user_tags.filter(t => t !== tag);
+  await postTags(title, e.user_tags);
+  rerenderCardTags(e);
+}
+
+function closeTagPicker() {
+  document.getElementById('tag-picker').style.display = 'none';
+  _pickerTitle = null;
+}
+
+async function postTags(title, tags) {
+  try {
+    await fetch('http://localhost:3737/api/save-tags', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ title, tags })
+    });
+    rebuildUserTagBtns();
+  } catch { alert('無法連線到伺服器，請確認 server.py 已啟動。'); }
+}
+
+function rebuildUserTagBtns() {
+  const bar = document.getElementById('cat-bar');
+  // 移除舊的分隔線和自訂標籤按鈕
+  bar.querySelectorAll('[data-usertag], [data-usersep]').forEach(el => el.remove());
+
+  const userCounts = {};
+  data.forEach(e => (e.user_tags || []).forEach(t => userCounts[t] = (userCounts[t] || 0) + 1));
+  const userTags = Object.entries(userCounts).sort((a, b) => b[1] - a[1]);
+  if (!userTags.length) return;
+
+  const sep = document.createElement('span');
+  sep.dataset.usersep = '1';
+  sep.style.cssText = 'color:var(--text3);font-size:9px;white-space:nowrap;padding:0 4px;flex-shrink:0';
+  sep.textContent = '│';
+  bar.appendChild(sep);
+
+  userTags.forEach(([tag, cnt]) => {
+    const btn = document.createElement('button');
+    btn.className = 'cat-btn';
+    btn.dataset.cat = tag;
+    btn.dataset.usertag = '1';
+    btn.onclick = () => setCat(btn);
+    btn.style.color = '#c4b5fd';
+    btn.style.borderColor = '#c4b5fd50';
+    btn.textContent = `${tag} ${cnt}`;
+    bar.appendChild(btn);
+  });
+}
+
+// ─── Add / Edit News ──────────────────────────────────────────────────────────
+let _newsEditOldTitle = null;  // null = 新增模式，有值 = 編輯模式
+
+function openNewsModal() {
+  _newsEditOldTitle = null;
+  document.getElementById('news-modal-heading').textContent = '新增公告 / 消息';
+  document.getElementById('news-url').value = '';
+  document.getElementById('news-desc').value = '';
+  document.getElementById('news-modal').classList.add('open');
+  setTimeout(() => document.getElementById('news-url').focus(), 50);
+}
+
+function editNews(oldTitle) {
+  _newsEditOldTitle = oldTitle;
+  const e = data.find(x => x.title === oldTitle);
+  if (!e) return;
+  const { url, desc } = parseNews(e);
+  document.getElementById('news-modal-heading').textContent = '編輯公告 / 消息';
+  document.getElementById('news-url').value = url;
+  document.getElementById('news-desc').value = desc;
+  document.getElementById('news-modal').classList.add('open');
+  setTimeout(() => document.getElementById('news-url').focus(), 50);
+}
+
+function closeNewsModal() {
+  document.getElementById('news-modal').classList.remove('open');
+  _newsEditOldTitle = null;
+}
+
+// ─── 新增動畫：查證正確性＋抓取資料（見 CLAUDE.md 第18節④）───────────────────
+let _afPicked = null;  // 目前選定的 bgm 候選詳細資料（/api/bgm-detail 回傳內容）
+
+function openAnimeModal() {
+  ['af-title','af-year','af-month','af-watched','af-total','af-score','af-comment'].forEach(id => {
+    document.getElementById(id).value = '';
+  });
+  document.getElementById('af-season').value = '';
+  document.getElementById('af-type').value = 'series';
+  document.getElementById('af-candidates').innerHTML = '';
+  document.getElementById('af-warning').style.display = 'none';
+  document.getElementById('af-detail-form').style.display = 'none';
+  document.getElementById('af-submit-btn').style.display = 'none';
+  document.getElementById('af-search-btn').disabled = false;
+  _afPicked = null;
+  document.getElementById('anime-modal').classList.add('open');
+  setTimeout(() => document.getElementById('af-title').focus(), 50);
+}
+function closeAnimeModal() {
+  document.getElementById('anime-modal').classList.remove('open');
+}
+
+async function searchBgmForAdd() {
+  const title = document.getElementById('af-title').value.trim();
+  if (!title) { alert('請先輸入動畫名稱'); return; }
+  const btn = document.getElementById('af-search-btn');
+  btn.disabled = true;
+  document.getElementById('af-detail-form').style.display = 'none';
+  document.getElementById('af-submit-btn').style.display = 'none';
+  document.getElementById('af-warning').style.display = 'none';
+  const candEl = document.getElementById('af-candidates');
+  candEl.innerHTML = '<div style="font-size:12px;color:var(--text3);padding:6px 0">查詢中…</div>';
+  try {
+    const res = await fetch('http://localhost:3737/api/bgm-search', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ keyword: title })
+    });
+    const j = await res.json();
+    if (!j.ok) { candEl.innerHTML = ''; alert('查詢失敗：' + (j.error || '未知錯誤')); return; }
+    renderBgmCandidates(j.results);
+  } catch {
+    candEl.innerHTML = '';
+    alert('無法連線到伺服器，請確認 server.py 已啟動。');
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+function renderBgmCandidates(results) {
+  const candEl = document.getElementById('af-candidates');
+  if (!results.length) {
+    candEl.innerHTML = '<div style="font-size:12px;color:var(--text3);padding:6px 0">查無結果，試試看用日文原名、英文標題，或去掉標點符號重新查詢。</div>';
+    return;
+  }
+  candEl.innerHTML = results.map(r => `
+    <div class="bgm-candidate" onclick="pickBgmCandidate(${r.id})">
+      <img src="${escHtml(r.image || '')}" onerror="this.style.visibility='hidden'">
+      <div class="bc-info">
+        <div class="bc-name">${escHtml(r.name_cn || r.name || '（無標題）')}</div>
+        <div class="bc-meta">${escHtml(r.name || '')} · ${r.date || '日期未知'} · ${r.eps ? r.eps + '集' : '集數未知'} · ${r.score ? 'bgm ' + r.score + '分' : '尚無評分'}</div>
+      </div>
+    </div>`).join('');
+}
+
+async function pickBgmCandidate(bgmId) {
+  const candEl = document.getElementById('af-candidates');
+  candEl.innerHTML = '<div style="font-size:12px;color:var(--text3);padding:6px 0">讀取詳細資料中…</div>';
+  try {
+    const res = await fetch('http://localhost:3737/api/bgm-detail', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ bgm_id: bgmId })
+    });
+    const j = await res.json();
+    if (!j.ok) { alert('讀取失敗：' + (j.error || '未知錯誤')); return; }
+    candEl.innerHTML = '';
+    const warnEl = document.getElementById('af-warning');
+    if (j.existing_title) {
+      warnEl.style.display = 'block';
+      warnEl.textContent = `⚠️ 這個 bgm 條目已經被資料庫裡的「${j.existing_title}」使用了，無法重複新增，請確認是不是同一部作品。`;
+      document.getElementById('af-detail-form').style.display = 'none';
+      document.getElementById('af-submit-btn').style.display = 'none';
+      _afPicked = null;
+      return;
+    }
+    warnEl.style.display = 'none';
+    _afPicked = j;
+    fillAfDetailForm(j);
+  } catch {
+    alert('無法連線到伺服器，請確認 server.py 已啟動。');
+  }
+}
+
+function fillAfDetailForm(j) {
+  document.getElementById('af-preview').innerHTML = `
+    ${j.image ? `<img src="${escHtml(j.image)}">` : ''}
+    <div style="min-width:0">
+      <div style="font-size:13px;font-weight:700;color:var(--text)">${escHtml(j.name_cn || j.name || '')}</div>
+      <div style="font-size:11px;color:var(--text3);margin-top:2px">${escHtml(j.name || '')}</div>
+      <div style="font-size:11px;color:var(--text3);margin-top:4px">bgm評分 ${j.score ?? '無'} · 正片${j.eps ?? '?'}集${j.total_episodes && j.total_episodes !== j.eps ? `（含SP等共${j.total_episodes}集）` : ''}</div>
+    </div>`;
+  document.getElementById('af-year').value  = j.year  || '';
+  document.getElementById('af-season').value = j.season || '';
+  document.getElementById('af-month').value = j.month || '';
+  document.getElementById('af-type').value  = j.platform === '剧场版' ? 'movie' : 'series';
+  document.getElementById('af-total').value = j.eps || '';
+  document.getElementById('af-synopsis-preview').value = j.summary || '';
+  const infoboxLines = (j.infobox || [])
+    .filter(x => ['导演','原作','动画制作','音乐','人物设定','脚本','製作','制作'].includes(x.key))
+    .map(x => `${x.key}：${typeof x.value === 'string' ? x.value : (x.value || []).map(v => v.v).join('、')}`);
+  document.getElementById('af-infobox-ref').textContent = infoboxLines.length
+    ? '(bgm infobox 參考，尚未經WebSearch交叉核對，之後填info欄位前務必再次確認) ' + infoboxLines.join('；')
+    : '';
+  renderAfTagsBox();
+  document.getElementById('af-detail-form').style.display = 'block';
+  document.getElementById('af-submit-btn').style.display = 'inline-block';
+}
+
+function renderAfTagsBox() {
+  const box = document.getElementById('af-tags-box');
+  box.innerHTML = Object.entries(CATS).map(([id, cat]) => `
+    <label class="af-tag-chip" style="color:${cat.color}">
+      <input type="checkbox" value="${id}"> ${escHtml(cat.label)}
+    </label>`).join('');
+}
+
+async function submitAnimeVerified() {
+  if (!_afPicked) { alert('請先查詢並選擇對應的 bgm.tv 條目'); return; }
+  const title = document.getElementById('af-title').value.trim();
+  if (!title) { alert('請填寫動畫名稱'); return; }
+  const tags = Array.from(document.querySelectorAll('#af-tags-box input:checked')).map(el => el.value);
+  const payload = {
+    title,
+    year:  document.getElementById('af-year').value  || null,
+    season: document.getElementById('af-season').value || null,
+    month: document.getElementById('af-month').value || null,
+    type:  document.getElementById('af-type').value,
+    progress_total: document.getElementById('af-total').value.trim() || null,
+    watched: document.getElementById('af-watched').value.trim(),
+    score:   document.getElementById('af-score').value || null,
+    comment: document.getElementById('af-comment').value.trim(),
+    tags,
+    bgm_id:         _afPicked.bgm_id,
+    bgm_score:      _afPicked.score,
+    bgm_image_url:  _afPicked.image,
+    bgm_episodes:   _afPicked.eps,
+    bgm_synopsis:   document.getElementById('af-synopsis-preview').value,
+    bgm_name:       _afPicked.name,
+    bgm_name_cn:    _afPicked.name_cn,
+  };
+  try {
+    const res = await fetch('http://localhost:3737/api/add-anime-verified', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify(payload)
+    });
+    const j = await res.json();
+    if (j.error === 'duplicate') { alert('該動畫名稱已存在於資料庫'); return; }
+    if (j.error === 'bgm_id_duplicate') { alert('這個 bgm 條目已經被其他條目使用過了'); return; }
+    if (!j.ok) { alert('新增失敗：' + (j.error || '未知錯誤')); return; }
+    closeAnimeModal();
+    const entry = j.entry;
+    entry.image_url = _afPicked.image || ''; entry.mal_score = null; entry.bgm_score = _afPicked.score;
+    entry.genres = []; entry.studios = []; entry.synopsis = _afPicked.summary || '';
+    entry.mal_title = ''; entry.episodes = _afPicked.eps;
+    data.push(entry);
+    updateHeaderStats();
+    applyFilters();
+  } catch { alert('無法連線到伺服器，請確認 server.py 已啟動。'); }
+}
+
+document.getElementById('anime-modal').addEventListener('click', function(e) {
+  if (e.target === this) closeAnimeModal();
+});
+document.getElementById('af-title').addEventListener('keydown', e => {
+  if (e.key === 'Escape') closeAnimeModal();
+  if (e.key === 'Enter') { e.preventDefault(); searchBgmForAdd(); }
+});
+
+async function submitNews() {
+  const url  = document.getElementById('news-url').value.trim();
+  const desc = document.getElementById('news-desc').value.trim();
+  if (!url.startsWith('http')) { alert('請輸入有效的網址（http 開頭）'); return; }
+  const newTitle = (url + (desc ? ' ' + desc : '')).trim();
+
+  if (_newsEditOldTitle) {
+    // 編輯模式：呼叫 save-title
+    if (newTitle === _newsEditOldTitle) { closeNewsModal(); return; }
+    try {
+      const res = await fetch('http://localhost:3737/api/save-title', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ old: _newsEditOldTitle, new: newTitle })
+      });
+      const json = await res.json();
+      if (!json.ok) { alert('儲存失敗：' + json.error); return; }
+      const e = data.find(x => x.title === _newsEditOldTitle);
+      if (e) e.title = newTitle;
+      closeNewsModal();
+      applyFilters();
+    } catch { alert('無法連線到伺服器，請確認 server.py 已啟動。'); }
+  } else {
+    // 新增模式
+    try {
+      const res = await fetch('http://localhost:3737/api/add-news', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ url, desc })
+      });
+      const json = await res.json();
+      if (!json.ok) { alert('新增失敗：' + json.error); return; }
+      closeNewsModal();
+      if (!json.dup) {
+        data.push(json.entry);
+        applyFilters();
+      }
+    } catch { alert('無法連線到伺服器，請確認 server.py 已啟動。'); }
+  }
+}
+
+document.getElementById('news-modal').addEventListener('click', function(e) {
+  if (e.target === this) closeNewsModal();
+});
+document.getElementById('news-url').addEventListener('keydown', e => {
+  if (e.key === 'Enter') submitNews();
+  if (e.key === 'Escape') closeNewsModal();
+});
+
+// ─── Delete Anime ─────────────────────────────────────────────────────────────
+let _delTarget = null;
+
+function confirmDelete(title) {
+  _delTarget = title;
+  document.getElementById('del-modal-name').textContent = title;
+  document.getElementById('del-modal').classList.add('open');
+}
+
+function closeDelModal() {
+  _delTarget = null;
+  document.getElementById('del-modal').classList.remove('open');
+}
+
+async function executeDelete() {
+  if (!_delTarget) return;
+  const title = _delTarget;
+  closeDelModal();
+  try {
+    const res = await fetch('http://localhost:3737/api/delete-anime', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ title })
+    });
+    const json = await res.json();
+    if (!json.ok) { alert('刪除失敗：' + json.error); return; }
+    // 從記憶體移除並更新畫面
+    const idx = data.findIndex(e => e.title === title);
+    if (idx >= 0) data.splice(idx, 1);
+    const cardId = 'tags-' + title.replace(/['"<>&]/g, '_');
+    const card = document.getElementById(cardId)?.closest('.card');
+    if (card) card.remove();
+  } catch { alert('無法連線到伺服器，請確認 server.py 已啟動。'); }
+}
+
+// 點遮罩關閉
+document.getElementById('del-modal').addEventListener('click', function(e) {
+  if (e.target === this) closeDelModal();
+});
+document.getElementById('scanlog-modal').addEventListener('click', function(e) {
+  if (e.target === this) closeChangeLogModal();
+});
+
+// ─── State ───────────────────────────────────────────────────────────────────
+const state = {
+  tab: 'anime',
+  showScores: { 10: true, 9: true, 8: true, 7: true, 6: true, 5: true, 4: true, 3: true, 2: true, 1: true },
+  showTypes: { series: true, movie: true, ova: false, short_anime: false },
+  showStatuses: { complete: true, partial: true, unwatched: true },
+  newsMode: false,
+  catFilter: 'all',
+  search: '',
+  activeYear: null,
+  reorderMode: false,
+};
+
+// 「同系列」跳轉後持續閃爍提示的目標卡片標題，點開該動畫才清除。
+// 必須在這裡（早於 init()/applyFilters() 的初次呼叫）宣告——renderCard() 的卡片
+// 樣板會讀取這個變數，如果宣告寫在檔案後段（例如跟 detail modal 相關函式放一起），
+// 首次進頁面的 applyFilters() 會在這行 let 執行之前就先呼叫到 renderCard()，
+// 對還沒初始化的 let 變數讀取會直接丟出「Cannot access before initialization」，
+// 且會讓最外層 <script> 直接中斷執行、整個卡片列表永遠不會渲染出來。
+let _flashTitle = null;
+
+// ─── Data ────────────────────────────────────────────────────────────────────
+const data = ANIME_DATA.anime;
+const CATS = ANIME_DATA.categories || {};
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+function isNews(e) {
+  return e.title.startsWith('http');
+}
+
+function parseNews(e) {
+  const raw = e.title;
+  // URL 終止於空白或中文標點
+  const m = raw.match(/^(https?:\/\/[^\s，,。）)]+)[，,\s）)]*\s*(.*)/s);
+  if (!m) return { url: raw, desc: '' };
+  return { url: m[1], desc: m[2].trim() };
+}
+
+function getStatus(e) {
+  if (isNews(e)) return 'news';
+  if (e.progress_pct === 100) return 'complete';
+  if (e.progress_pct === null && e.type === 'movie') return 'complete';
+  if (e.progress_pct > 0 && e.progress_pct < 100) return 'partial';
+  if (e.progress_watched === 0 || e.progress_watched === '0' || e.progress_watched === null) return 'unwatched';
+  return 'partial';
+}
+
+function getCardClass(e) {
+  const st = getStatus(e);
+  if (e.type === 'movie') return 'movie';
+  return st;
+}
+
+function renderStars(score) {
+  if (!score) return '';
+  const filled = '★'.repeat(score);
+  const empty = '☆'.repeat(10 - score);
+  return `<span class="stars">${filled}${empty}</span>`;
+}
+
+function scoreClass(s) {
+  if (s >= 10) return 's10';
+  if (s >= 9)  return 's9';
+  if (s >= 8)  return 's8';
+  if (s >= 7)  return 's7';
+  if (s >= 6)  return 's6';
+  if (s >= 5)  return 's5';
+  return 'slow';
+}
+
+function fillClass(pct, watched) {
+  if (watched === '?') return 'fill-unknown';
+  if (!pct) return 'fill-low';
+  if (pct === 100) return 'fill-complete';
+  if (pct >= 50) return 'fill-partial';
+  return 'fill-low';
+}
+
+function renderCardScores(e) {
+  const myScore = e.score ? (() => {
+    const cls = scoreClass(e.score);
+    return `<div class="my-score-wrap">
+      ${renderStars(e.score)}
+      <span class="score-badge ${cls}">${e.score}<span style="font-size:9px;color:var(--text3)">/10</span></span>
+    </div>`;
+  })() : '';
+  const malScore = e.mal_score
+    ? `<div class="mal-score">MAL <strong>${e.mal_score.toFixed(1)}</strong></div>`
+    : '';
+  const bgmScore = e.bgm_score
+    ? `<div class="bgm-score">BGM <strong>${e.bgm_score.toFixed(1)}</strong></div>`
+    : '';
+  return `${myScore}${bgmScore}${malScore}`;
+}
+
+function rerenderCardScore(e) {
+  const wrap = document.getElementById('scores-' + e.title.replace(/['"<>&]/g, '_'));
+  if (wrap) wrap.innerHTML = renderCardScores(e);
+}
+
+async function toggleWantToWatch(event, title) {
+  event.stopPropagation();
+  const e = data.find(x => x.title === title);
+  if (!e) return;
+  const next = !e.want_to_watch;
+  try {
+    const res = await fetch('http://localhost:3737/api/save-want-to-watch', {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ title, want: next })
+    });
+    if (!res.ok) throw new Error('server');
+  } catch { alert('無法儲存，請確認伺服器已啟動'); return; }
+  e.want_to_watch = next;
+  const safeId = title.replace(/['"<>&]/g, '_');
+  const btn = document.getElementById('heart-' + safeId);
+  if (btn) { btn.textContent = next ? '💛' : '🤍'; btn.classList.toggle('active', next); }
+  const card = document.getElementById('tags-' + safeId)?.closest('.card');
+  if (card) card.classList.toggle('want-to-watch', next);
+}
+
+function renderCardProgressInner(e) {
+  if (e.progress_watched === null) {
+    return `<span class="comment-placeholder" style="font-size:10px">雙擊新增進度…</span>`;
+  }
+  const pct = e.progress_pct || 0;
+  return `<div class="progress-bar"><div class="progress-fill ${fillClass(e.progress_pct, e.progress_watched)}" style="width:${e.progress_watched === '?' ? 40 : pct}%"></div></div>
+    <span class="progress-text" ${e.progress_watched === '?' ? 'style="color:var(--accent)"' : ''}>${e.progress_watched}/${e.progress_total}</span>`;
+}
+
+function rerenderCardProgress(e) {
+  const wrap = document.getElementById('prog-' + e.title.replace(/['"<>&]/g, '_'));
+  if (wrap) wrap.innerHTML = renderCardProgressInner(e);
+}
+
+function seasonEmoji(s) {
+  return { '冬': '❄️', '春': '🌸', '夏': '☀️', '秋': '🍂' }[s] || '🎬';
+}
+
+function seasonMonthRange(s) {
+  return { '冬': '1月~3月', '春': '4月~6月', '夏': '7月~9月', '秋': '10月~12月' }[s] || '';
+}
+
+// ─── Filter ──────────────────────────────────────────────────────────────────
+function filterData() {
+  const q = state.search.toLowerCase();
+  return data.filter(e => {
+    if (state.newsMode) return isNews(e);
+    if (isNews(e)) return false;
+    if (q && !e.title.toLowerCase().includes(q) && !(e.aliases || []).some(a => a.toLowerCase().includes(q))) return false;
+    if (e.score in state.showScores && !state.showScores[e.score]) return false;
+    if (e.type in state.showTypes && !state.showTypes[e.type]) return false;
+    const st = getStatus(e);
+    if (st in state.showStatuses && !state.showStatuses[st]) return false;
+    if (state.catFilter !== 'all') {
+      const inCats = (e.tags || []).includes(state.catFilter);
+      const inUser = (e.user_tags || []).includes(state.catFilter);
+      if (!inCats && !inUser) return false;
+    }
+
+    return true;
+  });
+}
+
+// ─── Toggle filter buttons ───────────────────────────────────────────────────
+// 評分／連載/劇場版/OVA・特番/泡麵番／看完/看一半/未看：各自獨立開關的顯示切換鈕
+// （見 CLAUDE.md 第18節，取代原本互斥單選的篩選方式，統一成一致的操作方式）
+function toggleShowScore(score) {
+  state.showScores[score] = !state.showScores[score];
+  document.getElementById(`score-btn-${score}`).classList.toggle('on', state.showScores[score]);
+  applyFilters();
+}
+
+function toggleShowType(type) {
+  state.showTypes[type] = !state.showTypes[type];
+  document.getElementById(`type-btn-${type}`).classList.toggle('on', state.showTypes[type]);
+  applyFilters();
+}
+
+function toggleShowStatus(status) {
+  state.showStatuses[status] = !state.showStatuses[status];
+  document.getElementById(`status-btn-${status}`).classList.toggle('on', state.showStatuses[status]);
+  applyFilters();
+}
+
+function toggleNewsMode() {
+  state.newsMode = !state.newsMode;
+  document.getElementById('news-mode-btn').classList.toggle('on', state.newsMode);
+  document.getElementById('add-news-btn').classList.toggle('visible', state.newsMode);
+  applyFilters();
+}
+
+// ─── 拖拉排序（見 CLAUDE.md 第18節⑧）────────────────────────────────────────
+function toggleReorderMode() {
+  // 切換排序模式需要整頁重建卡片（每張卡都要加/拿掉draggable屬性），
+  // 這會讓 content-visibility:auto 的年份區塊重置成假高度、捲動位置跳掉
+  // （見 CLAUDE.md 第15節）。用「記住目前捲動位置最頂端的卡片→重建→
+  // 捲回同一張卡片」的方式復原捲動位置，而不是手算 scrollTop 差值。
+  const content = document.getElementById('content');
+
+  // 滑鼠滾輪/觸控板放開後，瀏覽器原生的慣性捲動可能還沒完全停止；這時讀到的
+  // scrollTop 是還在漂移中的暫時值，讀完之後慣性繼續把畫面拖走，會讓復原的
+  // 位置跟使用者實際停下來的位置對不上。短暫關閉再打開 overflow 可以強制
+  // 中斷慣性捲動（不會動到目前 scrollTop 的數值本身），讓接下來讀取錨點、
+  // 以及等一下復原位置時，用的都是穩定值。
+  const killMomentum = () => {
+    const prevOverflow = content.style.overflowY;
+    content.style.overflowY = 'hidden';
+    void content.offsetHeight; // 強制 reflow
+    content.style.overflowY = prevOverflow;
+  };
+  killMomentum();
+
+  const contentTop = content.getBoundingClientRect().top;
+  const cards = document.querySelectorAll('.card[data-title]');
+  let anchorTitle = null;
+  let anchorOffset = 0; // 錨點卡片目前在可視區內的精確位置（不是貼齊頂端），等一下要原封不動復原
+  for (const card of cards) {
+    // 跟 #content 自己的可視區頂端比較，不是跟視窗的 0 比較——
+    // #content 本身位在頁首/篩選列下方，用 0 當門檻會誤選到被頁首擋住、
+    // 其實還沒真正露出來的卡片。留 2px 容差是因為前一版用 scrollIntoView
+    // 對齊後，卡片的 top 實測會有零點幾 px 的次像素誤差，嚴格 >= 比較會讓
+    // 下一次切換誤判成「還沒到頂」而多跳過一張卡片。
+    const top = card.getBoundingClientRect().top;
+    if (top >= contentTop - 2) {
+      anchorTitle = card.dataset.title;
+      anchorOffset = top - contentTop;
+      break;
+    }
+  }
+
+  state.reorderMode = !state.reorderMode;
+  document.getElementById('reorder-toggle-btn').classList.toggle('on', state.reorderMode);
+  applyFilters();
+
+  if (anchorTitle) {
+    const newCard = Array.from(document.querySelectorAll('.card[data-title]'))
+      .find(c => c.dataset.title === anchorTitle);
+    if (newCard) {
+      // 先貼齊頂端讓瀏覽器強制揭露沿路上還在假高度狀態的 content-visibility
+      // 區塊、確保接下來讀到的座標是準確的，再用差值把畫面精準復原到錨點卡片
+      // 原本所在的相對位置——不是「貼齊頂端」，而是「畫面看起來完全沒動過」，
+      // 因為錨點卡片切換前不一定剛好就在可視區最頂端（可能是可視區頂端往下
+      // 一小段的地方），直接貼齊頂端反而會讓畫面產生一段小幅但看得出來的位移。
+      newCard.scrollIntoView({ block: 'start' });
+      // 不能直接假設 scrollIntoView 之後這張卡一定貼齊頂端（offset=0）再減去
+      // anchorOffset——捲到接近頁面最底部時，底下已經沒有更多內容可捲，
+      // scrollIntoView 會被瀏覽器夾在可捲動範圍內、卡片其實沒有真的貼齊頂端，
+      // 這時候還照原本假設去扣減 anchorOffset 會每次切換都多扣一點、造成
+      // 越切越往上漂移。改成實測 scrollIntoView 完後卡片實際的 offset，
+      // 用「現在的offset跟目標offset的差」去精準微調，不管有沒有卡到邊界
+      // 都能算出正確的調整量。
+      const newContentTop = content.getBoundingClientRect().top;
+      const actualOffset = newCard.getBoundingClientRect().top - newContentTop;
+      content.scrollTop += (actualOffset - anchorOffset);
+      killMomentum(); // 重建後如果殘留的慣性還在跑，避免把剛復原好的位置又拖走
+    }
+  }
+}
+
+function sortByManualOrder(arr) {
+  return arr.slice().sort((a, b) => {
+    const ma = a.manual_order, mb = b.manual_order;
+    if (ma == null && mb == null) return 0;
+    if (ma == null) return 1;
+    if (mb == null) return -1;
+    return ma - mb;
+  });
+}
+
+let _dragSrcCard = null;
+
+function _cardDragStart(ev, cardEl) {
+  _dragSrcCard = cardEl;
+  cardEl.classList.add('dragging');
+  ev.dataTransfer.effectAllowed = 'move';
+  ev.dataTransfer.setData('text/plain', cardEl.dataset.title || '');
+}
+
+function _cardDragOver(ev, cardEl) {
+  ev.preventDefault();
+  if (!_dragSrcCard || _dragSrcCard === cardEl) return;
+  const grid = cardEl.closest('.cards-grid');
+  if (!grid || _dragSrcCard.closest('.cards-grid') !== grid) return;
+  const rect = cardEl.getBoundingClientRect();
+  const before = (ev.clientX - rect.left) < rect.width / 2;
+  grid.insertBefore(_dragSrcCard, before ? cardEl : cardEl.nextSibling);
+}
+
+function _cardDrop(ev) {
+  ev.preventDefault();
+}
+
+function _cardDragEnd(ev, cardEl) {
+  cardEl.classList.remove('dragging');
+  const grid = cardEl.closest('.cards-grid');
+  _dragSrcCard = null;
+  if (grid) _persistCardOrder(grid);
+}
+
+function _persistCardOrder(gridEl) {
+  const titles = Array.from(gridEl.querySelectorAll('.card')).map(c => c.dataset.title).filter(Boolean);
+  if (titles.length < 2) return;
+  // 立即同步更新記憶體中的 manual_order，不要等 fetch 回應才更新——
+  // 否則使用者放開滑鼠後很快切換排序模式，applyFilters() 會用到還沒更新的舊值，
+  // 導致卡片瞬間跳回拖拉前的順序（時序競爭問題，見 CLAUDE.md 第18節⑧的踩坑紀錄）
+  titles.forEach((t, i) => {
+    const e = data.find(x => x.title === t);
+    if (e) e.manual_order = i;
+  });
+  fetch('http://localhost:3737/api/save-order', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ titles })
+  }).then(res => res.json()).then(j => {
+    if (!j.ok) throw new Error(j.error || '未知錯誤');
+  }).catch(err => {
+    alert('排序儲存失敗，請確認 server.py 已啟動。');
+  });
+}
+
+// ─── 自動化按鈕：狀態掃描／分數更新／變更紀錄（見 CLAUDE.md 第18節）─────────
+function _scanOverlay(show, text) {
+  const el = document.getElementById('scan-overlay');
+  if (text) document.getElementById('scan-overlay-text').textContent = text;
+  el.classList.toggle('open', show);
+}
+
+async function runScoreUpdate() {
+  const btn = document.getElementById('score-update-btn');
+  btn.disabled = true;
+  _scanOverlay(true, '正在重新查詢 BGM／MAL 分數，請稍候…');
+  try {
+    const res = await fetch('http://localhost:3737/api/run-score-update', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
+    const j = await res.json();
+    _scanOverlay(false);
+    btn.disabled = false;
+    if (!j.ok) { alert('分數更新失敗：' + (j.error || '未知錯誤')); return; }
+    const n = j.run.changes.length;
+    alert(n ? `分數更新完成，共 ${n} 筆分數有變化（詳情見「變更紀錄」）。` : '分數更新完成，這次沒有分數變化。');
+    window.location.reload();
+  } catch {
+    _scanOverlay(false);
+    btn.disabled = false;
+    alert('無法連線到伺服器，請確認 server.py 已啟動。');
+  }
+}
+
+async function runStatusScan() {
+  const btn = document.getElementById('status-scan-btn');
+  btn.disabled = true;
+  _scanOverlay(true, '正在掃描續作/劇場版消息與 upcoming 確認狀態，這可能需要幾分鐘…');
+  try {
+    const res = await fetch('http://localhost:3737/api/run-status-scan', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
+    const j = await res.json();
+    _scanOverlay(false);
+    btn.disabled = false;
+    if (!j.ok) { alert('狀態掃描失敗：' + (j.error || '未知錯誤')); return; }
+    alert(`狀態掃描完成：\n- ${j.confirmed_count} 筆 upcoming 已確認並自動套用\n- ${j.suggestion_count} 筆新續作建議（詳情見「變更紀錄」，需要手動查證後再新增，不會自動寫入）`);
+    window.location.reload();
+  } catch {
+    _scanOverlay(false);
+    btn.disabled = false;
+    alert('無法連線到伺服器，請確認 server.py 已啟動。');
+  }
+}
+
+async function openChangeLogModal() {
+  document.getElementById('scanlog-modal').classList.add('open');
+  document.getElementById('scanlog-list').innerHTML = '<div class="scanlog-empty">載入中…</div>';
+  await refreshChangeLogModal();
+}
+
+function closeChangeLogModal() {
+  document.getElementById('scanlog-modal').classList.remove('open');
+}
+
+async function refreshChangeLogModal() {
+  const listEl = document.getElementById('scanlog-list');
+  try {
+    const res = await fetch('http://localhost:3737/api/change-log');
+    const j = await res.json();
+    if (!j.ok) { listEl.innerHTML = '<div class="scanlog-empty">讀取失敗</div>'; return; }
+    renderChangeLogList(j.log);
+  } catch {
+    listEl.innerHTML = '<div class="scanlog-empty">無法連線到伺服器</div>';
+  }
+}
+
+function _fmtChangeValue(field, v) {
+  if (v === null || v === undefined) return '（無）';
+  if (field === 'upcoming_confirmed') {
+    return `${v.year || '?'}/${v.season || '?'}/${v.month || '?'}月，共${v.progress_total || '?'}集`;
+  }
+  if (field === 'sequel_suggestion') {
+    return `${v.found_name_cn || v.found_name}（bgm#${v.bgm_id}，${v.date}，${v.eps}集）`;
+  }
+  return String(v);
+}
+
+function renderChangeLogList(log) {
+  const listEl = document.getElementById('scanlog-list');
+  if (!log.length) { listEl.innerHTML = '<div class="scanlog-empty">目前還沒有任何自動化執行記錄</div>'; return; }
+  listEl.innerHTML = log.map(run => {
+    const changesHtml = run.changes.length
+      ? run.changes.map((c, idx) => {
+          let tag = '', action = '';
+          if (c.field === 'sequel_suggestion') {
+            tag = '<span class="tag-sugg">建議</span>';
+          } else if (c.reverted) {
+            tag = '<span class="tag-reverted">已還原</span>';
+          } else if (c.applied) {
+            action = `<button class="scanlog-revert-btn" onclick="revertChange('${run.id}',${idx})">還原</button>`;
+          }
+          const desc = c.field === 'sequel_suggestion'
+            ? `<b>${escHtml(c.title)}</b>：發現可能的續作 ${escHtml(_fmtChangeValue(c.field, c.new))}`
+            : `<b>${escHtml(c.title)}</b>：${escHtml(c.field)} ${escHtml(_fmtChangeValue(c.field, c.old))} → ${escHtml(_fmtChangeValue(c.field, c.new))}`;
+          return `<div class="scanlog-change"><div class="scanlog-change-info">${tag}${desc}</div>${action}</div>`;
+        }).join('')
+      : '<div class="scanlog-change-info" style="padding:6px 0;color:var(--text3)">這次沒有變化</div>';
+    return `<div class="scanlog-run">
+      <div class="scanlog-run-head"><b>${escHtml(run.action)}</b><span>${escHtml(run.timestamp)}</span></div>
+      ${changesHtml}
+    </div>`;
+  }).join('');
+}
+
+async function revertChange(runId, idx) {
+  if (!confirm('確定要還原這筆變更嗎？（主畫面要重新整理頁面才會反映最新結果）')) return;
+  try {
+    const res = await fetch('http://localhost:3737/api/revert-change', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ run_id: runId, index: idx }) });
+    const j = await res.json();
+    if (!j.ok) { alert('還原失敗：' + (j.error || '未知錯誤')); return; }
+    await refreshChangeLogModal();
+  } catch {
+    alert('無法連線到伺服器，請確認 server.py 已啟動。');
+  }
+}
+
+
+
+// ─── Render Card ─────────────────────────────────────────────────────────────
+// ─── Category filter ─────────────────────────────────────────────────────────
+function setCat(btn) {
+  document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('on'));
+  btn.classList.add('on');
+  state.catFilter = btn.dataset.cat;
+  applyFilters();
+}
+
+function initCatBar() {
+  const bar = document.getElementById('cat-bar');
+  const groupOrder = [
+    '轉生・穿越・網文公式', '成長・王道', '戀愛・日常・治癒',
+    '智鬥・懸疑・策略', '科幻・機甲・末日', '職場・社會寫實',
+    '恐怖・獵奇', '音樂・偶像', '超自然・靈異', '魔法少女', '劇場版',
+    '原作類型', '歷史・改編', '作者/導演'
+  ];
+  // movie/ova/short_anime 已經改用篩選列的「連載/劇場版/OVA・特番/泡麵番」獨立切換鈕
+  // 顯示，這裡的分類標籤列不再重複顯示這三個（見 CLAUDE.md 第18節）
+  const hiddenCatIds = new Set(['movie', 'ova', 'short_anime']);
+  const catOrder = Object.entries(CATS).filter(([id]) => !hiddenCatIds.has(id)).sort(([,a],[,b]) => {
+    const ia = groupOrder.indexOf(a.group);
+    const ib = groupOrder.indexOf(b.group);
+    return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib);
+  });
+  const counts = {};
+  data.forEach(e => (e.tags || []).forEach(t => counts[t] = (counts[t] || 0) + 1));
+  let lastGroup = null;
+  catOrder.forEach(([id, cat]) => {
+    if (cat.group !== lastGroup) {
+      lastGroup = cat.group;
+      const sep = document.createElement('span');
+      sep.style.cssText = 'color:var(--text3);font-size:9px;white-space:nowrap;padding:0 4px;flex-shrink:0';
+      sep.textContent = '│';
+      bar.appendChild(sep);
+    }
+    const btn = document.createElement('button');
+    btn.className = 'cat-btn';
+    btn.dataset.cat = id;
+    const n = counts[id] || 0;
+    if (n === 0) {
+      btn.style.opacity = '0.35';
+      btn.style.cursor = 'default';
+      btn.onclick = null;
+    } else {
+      btn.onclick = () => setCat(btn);
+    }
+    btn.style.color = cat.color;
+    btn.style.borderColor = cat.color + '50';
+    btn.textContent = n > 0 ? `${cat.label} ${n}` : cat.label;
+    bar.appendChild(btn);
+  });
+
+  // 加入使用者自訂標籤
+  const userCounts = {};
+  data.forEach(e => (e.user_tags || []).forEach(t => userCounts[t] = (userCounts[t] || 0) + 1));
+  const userTags = Object.entries(userCounts).sort((a, b) => b[1] - a[1]);
+  if (userTags.length) {
+    const sep = document.createElement('span');
+    sep.dataset.usersep = '1';
+    sep.style.cssText = 'color:var(--text3);font-size:9px;white-space:nowrap;padding:0 4px;flex-shrink:0';
+    sep.textContent = '│';
+    bar.appendChild(sep);
+    userTags.forEach(([tag, cnt]) => {
+      const btn = document.createElement('button');
+      btn.className = 'cat-btn';
+      btn.dataset.cat = tag;
+      btn.dataset.usertag = '1';
+      btn.onclick = () => setCat(btn);
+      btn.style.color = '#c4b5fd';
+      btn.style.borderColor = '#c4b5fd50';
+      btn.textContent = `${tag} ${cnt}`;
+      bar.appendChild(btn);
+    });
+  }
+}
+
+function renderNewsCard(e) {
+  const { url, desc } = parseNews(e);
+  const domain = (() => { try { return new URL(url).hostname.replace('www.',''); } catch { return url; } })();
+  const isYT = url.includes('youtu');
+  const tq = escHtml(e.title).replace(/'/g, "\\'");
+  return `<div class="card news-card">
+    <div class="card-top">
+      <div class="news-icon">${isYT ? '▶' : '📰'}</div>
+      <div class="card-body">
+        <a class="news-link" href="${escHtml(url)}" target="_blank" rel="noopener">${escHtml(desc || url)}</a>
+        <div class="news-domain">${escHtml(domain)}</div>
+      </div>
+      <div style="display:flex;gap:4px;flex-shrink:0;align-self:flex-start">
+        <button class="del-btn" onclick="editNews('${tq}')">✏️</button>
+        <button class="del-btn" onclick="confirmDelete('${tq}')">🗑</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+function renderCard(e) {
+  if (isNews(e)) return renderNewsCard(e);
+  const cardClass = getCardClass(e);
+  const pct = e.progress_pct;
+  const status = getStatus(e);
+
+  // ── Cover image
+  let coverHtml;
+  if (e.image_url) {
+    coverHtml = `<div class="card-cover">
+      <img data-src="${escHtml(e.image_url)}" alt="" loading="lazy">
+    </div>`;
+  } else {
+    const initial = (e.title || '?')[0];
+    coverHtml = `<div class="card-cover">
+      <div class="cover-placeholder">${escHtml(initial)}</div>
+    </div>`;
+  }
+
+  // ── Category tags (all)
+  const catTagHtml = renderCatTags(e);
+
+  // ── Status tags
+  let tags = '';
+  if (e.type === 'movie') tags += `<span class="tag tag-movie">劇場版</span>`;
+  if (e.season) tags += `<span class="tag tag-season">${seasonEmoji(e.season)} ${e.season}</span>`;
+  if (status === 'complete') tags += `<span class="tag tag-complete">完結</span>`;
+  if (status === 'partial') tags += `<span class="tag tag-partial">進行中</span>`;
+
+
+  // ── Meta row: studio · episodes
+  const metaParts = [];
+  if (e.studios && e.studios.length) metaParts.push(escHtml(e.studios[0]));
+  if (e.episodes) metaParts.push(`${e.episodes}集`);
+  const metaHtml = metaParts.length
+    ? `<div class="card-meta-row">${metaParts.join('<span class="dot"> · </span>')}</div>`
+    : '';
+
+  // ── Scores
+  const sid = 'scores-' + escHtml(e.title).replace(/['"<>&]/g,'_');
+  const scoresHtml = `<div class="card-scores" id="${sid}">${renderCardScores(e)}</div>`;
+
+  // ── Shared title escape
+  const tq  = escHtml(e.title).replace(/'/g, "\\'");
+
+  // ── Progress bar
+  const pid = 'prog-' + escHtml(e.title).replace(/['"<>&]/g, '_');
+  const progressHtml = `<div class="progress-wrap" id="${pid}" onclick="event.stopPropagation()" ondblclick="startEditProgress(event,'${tq}')">${renderCardProgressInner(e)}</div>`;
+
+  // ── Comment, info & synopsis
+  const cid = 'comment-' + escHtml(e.title).replace(/['"<>&]/g, '_');
+  const commentHtml = `<div class="card-comment" id="${cid}" onclick="event.stopPropagation()" ondblclick="startEditComment(event,'${tq}')">${e.comment ? escHtml(e.comment) : '<span class="comment-placeholder">雙擊新增評論…</span>'}</div>`;
+  const infoHtml = e.info
+    ? `<div class="card-info"><span class="card-info-label">資訊</span>${escHtml(e.info)}</div>` : '';
+  const synopsisHtml = e.synopsis
+    ? `<div class="card-synopsis">${escHtml(e.synopsis)}</div>` : '';
+
+  const heartId = 'heart-' + escHtml(e.title).replace(/['"<>&]/g,'_');
+  const heartHtml = `<button class="heart-btn${e.want_to_watch ? ' active' : ''}" id="${heartId}" onclick="toggleWantToWatch(event,'${tq}')" title="想看">${e.want_to_watch ? '💛' : '🤍'}</button>`;
+
+  const dragAttrs = state.reorderMode
+    ? ` draggable="true" ondragstart="_cardDragStart(event,this)" ondragover="_cardDragOver(event,this)" ondrop="_cardDrop(event)" ondragend="_cardDragEnd(event,this)"`
+    : '';
+
+  return `<div class="card ${cardClass}${e.want_to_watch ? ' want-to-watch' : ''}${e.title === _flashTitle ? ' flash-target' : ''}" data-title="${escHtml(e.title)}"${dragAttrs} onclick="openDetailModal('${tq}')">
+    <div class="card-top">
+      ${coverHtml}
+      <div class="card-body">
+        <div class="card-title-row">
+          <div class="card-title" ondblclick="startEditTitle(this,'${escHtml(e.title).replace(/'/g,"&#39;")}')">${escHtml(e.title)}</div>
+          ${heartHtml}
+          <button class="del-btn" onclick="confirmDelete('${escHtml(e.title).replace(/'/g,"&#39;")}')">🗑</button>
+        </div>
+        ${(e.aliases && e.aliases.length) ? `<div class="card-alias">${e.aliases.map(a => escHtml(a)).join(' · ')}</div>` : ''}
+        <div class="card-tags" id="tags-${escHtml(e.title).replace(/['"<>&]/g,'_')}">
+          ${catTagHtml}
+          ${renderUserTags(e)}
+        </div>
+        ${metaHtml}
+        ${scoresHtml}
+      </div>
+    </div>
+    <div class="card-bottom">
+      ${progressHtml}
+      ${commentHtml}
+      ${infoHtml}
+      ${synopsisHtml}
+    </div>
+  </div>`;
+}
+
+// ─── Lazy load images ─────────────────────────────────────────────────────────
+function initLazyLoad() {
+  const imgs = document.querySelectorAll('img[data-src]');
+  if ('IntersectionObserver' in window) {
+    const obs = new IntersectionObserver((entries) => {
+      entries.forEach(en => {
+        if (en.isIntersecting) {
+          const img = en.target;
+          img.src = img.dataset.src;
+          img.removeAttribute('data-src');
+          img.onload = () => img.classList.add('loaded');
+          img.onerror = () => {
+            img.parentElement.innerHTML = `<div class="cover-placeholder">${img.alt || '?'}</div>`;
+          };
+          obs.unobserve(img);
+        }
+      });
+    }, { rootMargin: '200px' });
+    imgs.forEach(img => obs.observe(img));
+  } else {
+    imgs.forEach(img => { img.src = img.dataset.src; img.classList.add('loaded'); });
+  }
+}
+
+function escHtml(s) {
+  return (s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function _dmEsc(s) {
+  return escHtml(s).replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+}
+
+// ─── Render Content ───────────────────────────────────────────────────────────
+function applyFilters() {
+  state.search = document.getElementById('search-box').value;
+  const filtered = filterData();
+  renderContent(filtered);
+}
+
+function renderContent(filtered) {
+  const content = document.getElementById('content');
+  const sidebar = document.getElementById('sidebar');
+  const emptyEl = document.getElementById('empty-state');
+  const countEl = document.getElementById('result-count');
+
+  const poolTotal = state.newsMode ? data.filter(isNews).length : data.filter(e => !isNews(e)).length;
+  countEl.textContent = `顯示 ${filtered.length} / ${poolTotal} 部`;
+
+  if (filtered.length === 0) {
+    content.innerHTML = `<div id="empty-state" style="display:block;text-align:center;padding:80px 20px;color:var(--text3)">
+      <div style="font-size:48px;margin-bottom:12px">🔍</div>
+      <p>找不到符合條件的動畫</p></div>`;
+    sidebar.innerHTML = '';
+    return;
+  }
+
+  // 預告／未定檔：獨立釘選在最上方，不參與年份分組
+  const upcoming = sortByManualOrder(filtered.filter(e => e.upcoming));
+  const rest = filtered.filter(e => !e.upcoming);
+  const gridClass = state.reorderMode ? 'cards-grid reorder-active' : 'cards-grid';
+
+  // Group by year → season
+  const byYear = {};
+  for (const e of rest) {
+    const y = e.year || '未知';
+    if (!byYear[y]) byYear[y] = {};
+    const s = e.season || (e.type === 'movie' ? '劇場版' : '未知');
+    if (!byYear[y][s]) byYear[y][s] = [];
+    byYear[y][s].push(e);
+  }
+
+  const years = Object.keys(byYear).sort((a, b) => Number(b) - Number(a));
+  const seasonOrder = ['秋', '夏', '春', '冬', '劇場版', '未知'];
+
+  // Sidebar
+  let sidebarHtml = '';
+  if (upcoming.length) {
+    sidebarHtml += `<button class="year-btn upcoming-btn${state.activeYear === 'upcoming' ? ' active' : ''}" onclick="scrollToYear('upcoming')" id="ybtn-upcoming">
+      <span class="ynum">🔜 預告</span><span class="ycnt">${upcoming.length}部</span>
+    </button>`;
+  }
+  sidebarHtml += years.map(y => {
+    const total = Object.values(byYear[y]).flat().length;
+    return `<button class="year-btn${y == state.activeYear ? ' active' : ''}" onclick="scrollToYear(${y})" id="ybtn-${y}">
+      <span class="ynum">${y}</span><span class="ycnt">${total}部</span>
+    </button>`;
+  }).join('');
+  sidebar.innerHTML = sidebarHtml;
+
+  // Content
+  let html = '';
+  if (upcoming.length) {
+    html += `<div class="year-section" id="year-upcoming" data-year="upcoming">
+      <div class="year-header">
+        <span class="year-label">🔜 預告／未定檔</span>
+        <div class="year-line"></div>
+        <span class="year-total">${upcoming.length} 部</span>
+      </div>
+      <div class="season-group">
+        <div class="${gridClass}">${upcoming.map(renderCard).join('')}</div>
+      </div>
+    </div>`;
+  }
+  for (const y of years) {
+    const total = Object.values(byYear[y]).flat().length;
+    html += `<div class="year-section" id="year-${y}" data-year="${y}">
+      <div class="year-header">
+        <span class="year-label">${y}</span>
+        <div class="year-line"></div>
+        <span class="year-total">${total} 部</span>
+      </div>`;
+
+    const seasons = Object.keys(byYear[y]).sort((a,b) => {
+      const ia = seasonOrder.indexOf(a);
+      const ib = seasonOrder.indexOf(b);
+      return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib);
+    });
+
+    for (const s of seasons) {
+      const items = sortByManualOrder(byYear[y][s]);
+      html += `<div class="season-group">
+        <div class="season-label">${y + ' ' + (s === '劇場版' ? '🎬 劇場版' : seasonEmoji(s) + ' ' + s + '季' + `<span class="season-range">(${seasonMonthRange(s)})</span>`)}</div>
+        <div class="${gridClass}">${items.map(renderCard).join('')}</div>
+      </div>`;
+    }
+    html += '</div>';
+  }
+  content.innerHTML = html;
+  initLazyLoad();
+
+  // Update active year on scroll
+  trackScroll();
+}
+
+// ─── Sidebar year scroll tracking ────────────────────────────────────────────
+let scrollTimer = null;
+function trackScroll() {
+  const content = document.getElementById('content');
+  content.onscroll = () => {
+    clearTimeout(scrollTimer);
+    scrollTimer = setTimeout(() => {
+      const sections = content.querySelectorAll('.year-section');
+      let activeY = null;
+      for (const sec of sections) {
+        const rect = sec.getBoundingClientRect();
+        if (rect.top <= content.getBoundingClientRect().top + 60) {
+          activeY = sec.dataset.year;
+        }
+      }
+      if (activeY && activeY !== state.activeYear) {
+        state.activeYear = activeY;
+        document.querySelectorAll('.year-btn').forEach(b => b.classList.remove('active'));
+        const btn = document.getElementById(`ybtn-${activeY}`);
+        if (btn) {
+          btn.classList.add('active');
+          btn.scrollIntoView({ block: 'nearest' });
+        }
+      }
+    }, 80);
+  };
+}
+
+function scrollToYear(y) {
+  const el = document.getElementById('year-' + y);
+  if (!el) return;
+  // scrollIntoView (unlike manual getBoundingClientRect math) correctly forces browsers to
+  // reveal content-visibility:auto sections that haven't been measured yet, so the target
+  // lands accurately even when jumping straight to a year that's never been scrolled near.
+  el.scrollIntoView({ block: 'start' });
+}
+
+// ─── Init ─────────────────────────────────────────────────────────────────────
+function updateHeaderStats() {
+  const animeOnly = data.filter(e => !isNews(e));
+  document.getElementById('anime-count').textContent = animeOnly.length;
+  const scored = animeOnly.filter(e => e.score).length;
+  const movies = animeOnly.filter(e => e.type === 'movie').length;
+  const years = [...new Set(animeOnly.map(e => e.year).filter(Boolean))];
+  document.getElementById('header-stats').textContent =
+    `${animeOnly.length} 部動畫 · ${scored} 部有評分 · ${movies} 部劇場版 · ${Math.min(...years)}–${Math.max(...years)}`;
+}
+
+function initScoreBar() {
+  const bar = document.getElementById('score-filters');
+  bar.innerHTML = '';
+  for (let s = 10; s >= 1; s--) {
+    const btn = document.createElement('button');
+    btn.className = 'filt-btn on';
+    btn.id = `score-btn-${s}`;
+    btn.title = `點擊可切換是否顯示評分${s}分的動畫`;
+    btn.textContent = `★${s}`;
+    btn.onclick = () => toggleShowScore(s);
+    bar.appendChild(btn);
+  }
+}
+
+// 漫畫 nav-tab 的數量徽章：只讀漫畫資料夾產生的一個小數字檔（見 CLAUDE.md 第19節），
+// 不載入/解析漫畫的完整 data.js，避免動畫頁面碰到漫畫的資料結構
+async function loadMangaCount() {
+  try {
+    const res = await fetch('../漫畫/count.json');
+    if (!res.ok) return;
+    const j = await res.json();
+    document.getElementById('manga-count').textContent = j.count;
+  } catch {
+    // 漫畫頁面資料還沒建立時就安靜略過，不影響動畫頁面本身
+  }
+}
+
+async function loadGameCount() {
+  try {
+    const res = await fetch('../遊戲/count.json');
+    if (!res.ok) return;
+    const j = await res.json();
+    document.getElementById('game-count').textContent = j.count;
+  } catch {
+    // 遊戲頁面資料還沒建立時就安靜略過，不影響動畫頁面本身
+  }
+}
+
+// 網頁最後更新時間：純粹是使用者自己手動維護的日期（見 ../last_updated.json），
+// 不是自動算出來的檔案修改時間，動畫/漫畫/遊戲三頁共用同一個檔案、顯示同一個日期
+// 網頁最後更新時間：動畫/漫畫/遊戲三頁各自獨立的一個日期值（各自的 last_updated.json，
+// 不是共用同一個檔案），可以直接在頁面上雙擊編輯，儲存只會動到這一頁自己的檔案，
+// 跟其他任何設定/資料完全無關
+let _lastUpdatedDate = null;
+
+async function loadLastUpdated() {
+  try {
+    const res = await fetch('last_updated.json');
+    if (!res.ok) return;
+    const j = await res.json();
+    _lastUpdatedDate = j.date;
+    renderLastUpdated();
+  } catch {
+    // 檔案還沒建立時安靜略過
+  }
+}
+
+function renderLastUpdated() {
+  const span = document.getElementById('last-updated');
+  if (!_lastUpdatedDate) { span.textContent = ''; return; }
+  const [y, m, d] = _lastUpdatedDate.split('-');
+  span.textContent = `最後更新：${y}年${Number(m)}月${Number(d)}日`;
+}
+
+function startEditLastUpdated() {
+  const span = document.getElementById('last-updated');
+  span.innerHTML = `<input type="date" id="last-updated-input" value="${_lastUpdatedDate || ''}">`;
+  const input = document.getElementById('last-updated-input');
+  input.focus();
+  input.onblur = saveLastUpdated;
+  input.onkeydown = e => { if (e.key === 'Enter') input.blur(); };
+}
+
+async function saveLastUpdated() {
+  const input = document.getElementById('last-updated-input');
+  const date = input.value;
+  if (!date) { renderLastUpdated(); return; }
+  try {
+    const res = await fetch('http://localhost:3737/api/save-last-updated', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ page: 'anime', date })
+    });
+    const j = await res.json();
+    if (j.ok) _lastUpdatedDate = j.date;
+  } catch {
+    alert('無法連線到伺服器，請確認 server.py 已啟動。');
+  }
+  renderLastUpdated();
+}
+
+function init() {
+  updateHeaderStats();
+  loadMangaCount();
+  loadGameCount();
+  loadLastUpdated();
+  initScoreBar();
+  initCatBar();
+  applyFilters();
+}
+
+init();
+
+// ─── Server Status Indicator ──────────────────────────────────────────────────
+function setStatusText(el, text) {
+  // 只改第一個文字節點，保留 countdown span
+  const node = [...el.childNodes].find(n => n.nodeType === 3);
+  if (node) node.textContent = text;
+  else el.insertBefore(document.createTextNode(text), el.firstChild);
+}
+
+async function checkServer() {
+  const el = document.getElementById('server-status');
+  try {
+    const res = await fetch('http://localhost:3737/api/status', { cache: 'no-store' });
+    const j = await res.json();
+    if (j.count > 1) {
+      el.className = 'multi';
+      setStatusText(el, `⬤ 伺服器 ×${j.count}（建議重開）`);
+      el.title = `目前有 ${j.count} 個 server.py 在執行，可能有衝突。\n請關閉後重新執行開啟動畫紀錄.bat`;
+    } else {
+      el.className = '';
+      setStatusText(el, `⬤ 伺服器運作中 (PID ${j.pid})`);
+      el.title = `連線正常 · PID ${j.pid}`;
+    }
+  } catch {
+    el.className = 'offline';
+    setStatusText(el, '⬤ 伺服器未連線');
+    el.title = '無法連線到 localhost:3737，請執行開啟動畫紀錄.bat';
+  }
+}
+let _countdown = 15;
+let _countdownEl = null;
+
+function startCountdown() {
+  _countdown = 15;
+  if (!_countdownEl) return;
+  _countdownEl.textContent = ` ${_countdown}s`;
+  clearInterval(_countdownEl._timer);
+  _countdownEl._timer = setInterval(() => {
+    _countdown--;
+    if (_countdown <= 0) {
+      clearInterval(_countdownEl._timer);
+    } else {
+      _countdownEl.textContent = ` ${_countdown}s`;
+    }
+  }, 1000);
+}
+
+checkServer().then(() => {
+  _countdownEl = document.getElementById('server-countdown');
+  startCountdown();
+});
+
+setInterval(() => {
+  checkServer().then(() => startCountdown());
+}, 15000);
+
+// ─── Detail Modal ──────────────────────────────────────────────────────────
+
+let _dmTitle = null;
+
+function openDetailModal(title) {
+  const e = data.find(x => x.title === title);
+  if (!e) return;
+  if (title === _flashTitle) _clearFlashTarget();
+  _dmTitle = title;
+  _dmRender(e);
+  document.getElementById('detail-overlay').classList.add('open');
+  document.getElementById('detail-box').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeDetailModal() {
+  document.getElementById('detail-overlay').classList.remove('open');
+  document.getElementById('detail-box').classList.remove('open');
+  document.body.style.overflow = '';
+  _dmTitle = null;
+}
+
+document.addEventListener('keydown', ev => {
+  if (ev.key === 'Escape') closeDetailModal();
+});
+
+function _dmRender(e, keepTab) {
+  // Cover
+  const coverEl = document.getElementById('detail-cover');
+  if (e.image_url) {
+    coverEl.innerHTML = `<img src="${escHtml(e.image_url)}" alt="" loading="lazy">`;
+  } else {
+    const ch = escHtml((e.title || '?').replace(/^劇場版\s*/,'')[0] || '?');
+    coverEl.innerHTML = `<div class="dm-placeholder">${ch}</div>`;
+  }
+
+  // Title & subtitle
+  const parts = [];
+  if (e.year)   parts.push(e.year + '年');
+  if (e.season) parts.push(e.season);
+  if (e.progress_total) parts.push(e.progress_total + '集');
+  if (e.studio) parts.push(e.studio);
+  document.getElementById('dm-title').textContent    = e.title;
+  document.getElementById('dm-subtitle').textContent = parts.join(' · ');
+  const aliasEl = document.getElementById('dm-aliases');
+  if (e.aliases && e.aliases.length) {
+    aliasEl.textContent = e.aliases.join(' · ');
+    aliasEl.style.display = '';
+  } else {
+    aliasEl.style.display = 'none';
+  }
+
+  // Tags
+  const cats = CATS;
+  document.getElementById('dm-tags').innerHTML =
+    (e.tags || []).map(t => {
+      const c = cats[t];
+      return c ? `<span class="cat-tag" style="--c:${c.color}">${c.label}</span>`
+               : '';
+    }).join('');
+
+  // Scores
+  const bgmHtml = e.bgm_score
+    ? `<span class="dm-bgm-score">BGM <strong>${e.bgm_score}</strong></span>`
+    : '';
+  const myCls = e.score ? scoreClass(e.score) : '';
+  const myHtml = e.score
+    ? `<span>個人 <strong class="${myCls}">${e.score}</strong></span>`
+    : `<span style="color:var(--text3)">個人 —</span>`;
+  document.getElementById('dm-scores').innerHTML = bgmHtml +
+    `<span id="dm-my-score" class="dm-editable" title="點擊編輯個人評分" onclick="dmStartEditScore('${_dmEsc(e.title)}')">${myHtml}</span>`;
+
+  // Progress (rebuild bar+text from scratch — the edit UI replaces these nodes)
+  const pw = e.progress_watched, pt = e.progress_total, pct = e.progress_pct || 0;
+  const fillCls = pw === '?' ? 'fill-unknown' : fillClass(pct, pw);
+  const barW    = pw === '?' ? 40 : pct;
+  const progColor   = pw === '?' ? 'color:var(--accent)' : '';
+  const progWrap = document.getElementById('dm-prog-wrap');
+  progWrap.innerHTML = `<div id="dm-prog-bar"><div id="dm-prog-fill" class="progress-fill ${fillCls}" style="width:${barW}%"></div></div>` +
+    `<span id="dm-prog-text">${(pw !== null && pw !== undefined)
+      ? `<span style="${progColor}">${pw}/${pt || '?'}</span>`
+      : `<span style="color:var(--text3)">未觀看</span>`}</span>`;
+  progWrap.title = '點擊編輯觀看進度';
+  progWrap.onclick = () => dmStartEditProgress(e.title);
+
+  // Default tab
+  document.querySelectorAll('.dtab').forEach(b => b.classList.remove('active'));
+  const _tab = keepTab || 'info';
+  document.querySelector(`.dtab[data-tab="${_tab}"]`).classList.add('active');
+  _dmLoadTab(_tab);
+
+  // Series
+  const related = _dmFindSeries(e);
+  const seriesDiv = document.getElementById('detail-series');
+  if (related.length > 1) {
+    seriesDiv.style.display = '';
+    _dmRenderStrip(related, e.title);
+  } else {
+    seriesDiv.style.display = 'none';
+  }
+}
+
+function switchDTab(btn) {
+  document.querySelectorAll('.dtab').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  _dmLoadTab(btn.dataset.tab);
+}
+
+function _dmLoadTab(tab) {
+  const e = data.find(x => x.title === _dmTitle);
+  if (!e) return;
+  const box = document.getElementById('detail-content');
+
+  if (tab === 'comment') {
+    const tq = e.title.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+    const body = e.comment
+      ? `<div id="dm-comment-text" style="white-space:pre-wrap">${escHtml(e.comment)}</div>`
+      : `<div id="dm-comment-text" class="dm-placeholder">尚未新增評論</div>`;
+    box.innerHTML = `${body}<button id="dm-comment-edit-btn" onclick="dmStartEdit('${tq}')">✏ 編輯心得</button>`;
+  } else if (tab === 'info') {
+    box.innerHTML = e.info
+      ? `<div style="white-space:pre-wrap">${escHtml(e.info)}</div>`
+      : `<span class="dm-placeholder">（無資訊）</span>`;
+  } else if (tab === 'controversy') {
+    box.innerHTML = e.controversy
+      ? `<div style="white-space:pre-wrap">${escHtml(e.controversy)}</div>`
+      : `<span class="dm-placeholder">（無爭議資訊）</span>`;
+  } else {
+    box.innerHTML = e.synopsis
+      ? `<div style="white-space:pre-wrap">${escHtml(e.synopsis)}</div>`
+      : `<span class="dm-placeholder">（無簡介）</span>`;
+  }
+}
+
+function dmStartEdit(title) {
+  const e = data.find(x => x.title === title);
+  if (!e) return;
+  const box = document.getElementById('detail-content');
+  box.innerHTML = `
+    <textarea id="dm-comment-ta" placeholder="輸入心得評論…">${escHtml(e.comment || '')}</textarea>
+    <div class="dm-edit-btns">
+      <button class="news-submit" style="padding:4px 14px;font-size:12px" onclick="dmSaveComment('${title.replace(/\\/g,'\\\\').replace(/'/g,"\\'")}')">儲存</button>
+      <button class="del-cancel" style="padding:4px 10px;font-size:12px" onclick="_dmLoadTab('comment')">取消</button>
+    </div>`;
+  document.getElementById('dm-comment-ta').focus();
+}
+
+async function dmSaveComment(title) {
+  const ta = document.getElementById('dm-comment-ta');
+  if (!ta) return;
+  const newComment = ta.value.trim();
+  try {
+    const res = await fetch('http://localhost:3737/api/save-comment', {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ title, comment: newComment })
+    });
+    if (!res.ok) throw new Error('server');
+    const e = data.find(x => x.title === title);
+    if (e) {
+      e.comment = newComment;
+      // sync the list card
+      const cid = 'comment-' + escHtml(title).replace(/['"<>&]/g,'_');
+      const cardEl = document.getElementById(cid);
+      if (cardEl) cardEl.innerHTML = newComment
+        ? escHtml(newComment)
+        : '<span class="comment-placeholder">雙擊新增評論…</span>';
+    }
+    _dmLoadTab('comment');
+  } catch { alert('無法儲存，請確認伺服器已啟動'); }
+}
+
+function _dmActiveTab() {
+  const btn = document.querySelector('.dtab.active');
+  return btn ? btn.dataset.tab : 'info';
+}
+
+// ─── Detail Modal: Score Edit ──────────────────────────────────────────────
+function dmStartEditScore(title) {
+  const e = data.find(x => x.title === title);
+  if (!e) return;
+  const wrap = document.getElementById('dm-scores');
+  if (wrap.querySelector('.dm-score-input')) return;
+  const bgmHtml = e.bgm_score ? `<span class="dm-bgm-score">BGM <strong>${e.bgm_score}</strong></span>` : '';
+  const cur = e.score ?? '';
+  wrap.innerHTML = `${bgmHtml}<span>個人
+    <input id="dm-score-input" class="dm-score-input" type="number" min="0" max="10" step="0.5" value="${cur}" placeholder="0-10">
+  </span>`;
+  const input = document.getElementById('dm-score-input');
+  input.focus(); input.select();
+
+  let saved = false;
+  const commit = () => { if (!saved) { saved = true; dmSaveScore(title, input.value); } };
+  input.addEventListener('keydown', ev => {
+    ev.stopPropagation();
+    if (ev.key === 'Enter') { ev.preventDefault(); commit(); }
+    if (ev.key === 'Escape') { saved = true; _dmRender(e, _dmActiveTab()); }
+  });
+  input.addEventListener('click', ev => ev.stopPropagation());
+  input.addEventListener('blur', () => setTimeout(commit, 120));
+}
+
+async function dmSaveScore(title, rawValue) {
+  const val = (rawValue ?? '').trim();
+  let score = null;
+  if (val !== '') {
+    const n = Number(val);
+    if (isNaN(n) || n < 0 || n > 10) {
+      alert('評分請輸入 0 到 10 之間的數字');
+      const e0 = data.find(x => x.title === title);
+      if (e0) _dmRender(e0, _dmActiveTab());
+      return;
+    }
+    score = n;
+  }
+  try {
+    const res = await fetch('http://localhost:3737/api/save-score', {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ title, score })
+    });
+    if (!res.ok) throw new Error('server');
+    const e = data.find(x => x.title === title);
+    if (e) e.score = score;
+  } catch { alert('無法儲存，請確認伺服器已啟動'); }
+  const e = data.find(x => x.title === title);
+  if (e) _dmRender(e, _dmActiveTab());
+  if (e) rerenderCardScore(e);
+}
+
+// ─── Detail Modal: Progress Edit ───────────────────────────────────────────
+function dmStartEditProgress(title) {
+  const e = data.find(x => x.title === title);
+  if (!e) return;
+  const wrap = document.getElementById('dm-prog-wrap');
+  if (wrap.querySelector('.prog-input')) return;
+  wrap.onclick = null;
+  const curW = e.progress_watched ?? '';
+  const curT = e.progress_total ?? '';
+
+  const inW = document.createElement('input');
+  inW.className = 'prog-input'; inW.value = curW; inW.placeholder = '已看';
+  const sep = document.createElement('span');
+  sep.className = 'prog-sep'; sep.textContent = '/';
+  const inT = document.createElement('input');
+  inT.className = 'prog-input'; inT.value = curT; inT.placeholder = '總集';
+  const doneBtn = document.createElement('button');
+  doneBtn.className = 'prog-done-btn'; doneBtn.textContent = '完結';
+
+  wrap.innerHTML = '';
+  wrap.append(inW, sep, inT, doneBtn);
+  inW.focus(); inW.select();
+
+  let saved = false;
+  const commit = () => { if (!saved) { saved = true; dmSaveProgress(title, inW.value, inT.value); } };
+
+  doneBtn.addEventListener('click', ev => {
+    ev.stopPropagation();
+    const t = inT.value.trim();
+    if (t && t !== 'V' && !isNaN(Number(t)) && Number(t) > 0) {
+      inW.value = t;
+    } else {
+      inW.value = 'V'; inT.value = 'V';
+    }
+    commit();
+  });
+
+  inW.addEventListener('keydown', ev => { ev.stopPropagation(); if (ev.key === 'Enter') inT.focus(); });
+  inT.addEventListener('keydown', ev => {
+    ev.stopPropagation();
+    if (ev.key === 'Enter') commit();
+    if (ev.key === 'Escape') { saved = true; _dmRender(e, _dmActiveTab()); }
+  });
+  [inW, inT].forEach(inp => {
+    inp.addEventListener('click', ev => ev.stopPropagation());
+    inp.addEventListener('blur', () => setTimeout(() => {
+      if (!wrap.contains(document.activeElement)) commit();
+    }, 120));
+  });
+}
+
+async function dmSaveProgress(title, watchedRaw, totalRaw) {
+  const watched = (watchedRaw ?? '').trim();
+  const total   = (totalRaw ?? '').trim();
+  try {
+    const res = await fetch('http://localhost:3737/api/save-progress', {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ title, watched, total })
+    });
+    const j = await res.json();
+    const e = data.find(x => x.title === title);
+    if (e) {
+      e.progress_watched = watched || null;
+      e.progress_total   = total   || null;
+      e.progress_pct     = j.pct ?? null;
+    }
+  } catch { alert('無法連線到伺服器'); }
+  const e = data.find(x => x.title === title);
+  if (e) _dmRender(e, _dmActiveTab());
+  if (e) rerenderCardProgress(e);
+}
+
+function _dmFindSeries(entry) {
+  // Map season to representative month for accurate chronological sort
+  // 冬=1 (Jan-Mar) < 春=4 (Apr-Jun) < 夏=7 (Jul-Sep) < 秋=10 (Oct-Dec)
+  const SEASON_M = { 冬: 1, 春: 4, 夏: 7, 秋: 10, 劇場版: 12, 未知: 0 };
+  function toMonth(e) {
+    if (e.month) return e.month;
+    return SEASON_M[e.season||'未知'] || 0;
+  }
+  function byDate(a, b) {
+    const au = !!a.upcoming, bu = !!b.upcoming;
+    if (au !== bu) return au ? 1 : -1; // 預告／未上映一律排最右（最新）
+    if ((a.year||0) !== (b.year||0)) return (a.year||0) - (b.year||0);
+    return toMonth(a) - toMonth(b);
+  }
+
+  // ── Priority 1: pre-computed series_id from Bangumi relations ──
+  if (entry.series_id != null) {
+    const core = data.filter(x => x.series_id === entry.series_id);
+    const coreTitles = new Set(core.map(x => x.title));
+    // Also include entries whose aliases explicitly reference a core title
+    // (covers entries that weren't linked via Bangumi API but were manually aliased)
+    const group = data.filter(x =>
+      x.series_id === entry.series_id ||
+      (x.aliases || []).some(a => coreTitles.has(a))
+    );
+    if (group.length > 1) return group.sort(byDate);
+  }
+
+  // ── Priority 2: string-based fallback (for entries without bgm_id) ──
+  const title   = entry.title;
+  const aliases = entry.aliases || [];
+  const allTitles = [...new Set(data.map(x => x.title))];
+  const allSet    = new Set(allTitles);
+
+  // True series continuation: space/colon separator required for short roots (<8 chars)
+  function isCont(base, full) {
+    if (!full.startsWith(base) || full.length <= base.length) return false;
+    if (base.length >= 8) return true;
+    const next = full[base.length];
+    return next === ' ' || next === '　' || next === ':' || next === '：';
+  }
+
+  const aliasRoot = aliases.find(a => allSet.has(a));
+  let aliasPfx = '';
+  if (!aliasRoot) {
+    for (const a of aliases)
+      for (const t of allTitles)
+        if (t !== title && isCont(t, a) && t.length > aliasPfx.length) aliasPfx = t;
+  }
+  let titlePfx = '';
+  if (!aliasRoot && !aliasPfx) {
+    for (const t of allTitles)
+      if (t !== title && isCont(t, title) && t.length > titlePfx.length) titlePfx = t;
+  }
+
+  const root = aliasRoot || aliasPfx || titlePfx || title;
+  return data.filter(x =>
+    x.title === root ||
+    isCont(root, x.title) ||
+    (x.aliases || []).includes(root) ||
+    (x.aliases || []).some(a => a === root || isCont(root, a))
+  ).sort(byDate);
+}
+
+function _dmRenderStrip(related, currentTitle) {
+  const scroll = document.getElementById('dm-series-scroll');
+  scroll.innerHTML = related.map(e => {
+    const active = e.title === currentTitle ? 'dm-active' : '';
+    const tq = e.title.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+    const coverHtml = e.image_url
+      ? `<img src="${escHtml(e.image_url)}" alt="" loading="lazy">`
+      : `<div class="dm-placeholder">${escHtml((e.title||'?').replace(/^劇場版\s*/,'')[0]||'?')}</div>`;
+    let badge = '';
+    if (e.type === 'movie') badge = `<span class="series-thumb-badge movie">劇場版</span>`;
+    else if (e.type === 'ova') badge = `<span class="series-thumb-badge ova">OVA</span>`;
+    else if (e.type === 'short') badge = `<span class="series-thumb-badge short">短篇</span>`;
+    const upcomingBadge = e.upcoming ? `<span class="series-thumb-badge upcoming">未上映</span>` : '';
+    return `<div class="series-thumb ${active}" onclick="_dmNavTo('${tq}')">
+      <div class="series-thumb-img">${coverHtml}</div>
+      ${badge}${upcomingBadge}
+      <div class="series-thumb-label">${escHtml(e.title)}</div>
+    </div>`;
+  }).join('');
+  setTimeout(() => {
+    const act = scroll.querySelector('.dm-active');
+    if (act) act.scrollIntoView({ behavior:'smooth', block:'nearest', inline:'center' });
+  }, 60);
+}
+
+function _dmNavTo(title) {
+  const e = data.find(x => x.title === title);
+  if (!e) return;
+  const curTab = document.querySelector('.dtab.active')?.dataset.tab || 'info';
+  _dmTitle = title;
+  _dmRender(e, curTab);
+  _dmScrollCard(title);
+}
+
+function _dmScrollCard(title) {
+  const els = document.querySelectorAll('.card-title');
+  for (const el of els) {
+    if (el.textContent.trim() === title) {
+      el.closest('.card')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      break;
+    }
+  }
+  _setFlashTarget(title);
+}
+
+// 讓對應卡片的外框持續閃爍，直到使用者真的點開那部動畫（見 openDetailModal 裡的清除邏輯）
+function _setFlashTarget(title) {
+  if (_flashTitle && _flashTitle !== title) _clearFlashTarget();
+  _flashTitle = title;
+  const els = document.querySelectorAll('.card-title');
+  for (const el of els) {
+    if (el.textContent.trim() === title) {
+      el.closest('.card')?.classList.add('flash-target');
+      break;
+    }
+  }
+}
+
+function _clearFlashTarget() {
+  if (!_flashTitle) return;
+  const prev = _flashTitle;
+  _flashTitle = null;
+  const els = document.querySelectorAll('.card-title');
+  for (const el of els) {
+    if (el.textContent.trim() === prev) {
+      el.closest('.card')?.classList.remove('flash-target');
+      break;
+    }
+  }
+}
+</script>
+
+<!-- Detail Modal -->
+<div id="detail-overlay" onclick="closeDetailModal()"></div>
+<div id="detail-box">
+  <button id="detail-close" onclick="closeDetailModal()" title="關閉 (Esc)">✕</button>
+  <div id="detail-header">
+    <div id="detail-cover"></div>
+    <div id="detail-meta">
+      <div id="dm-title"></div>
+      <div id="dm-subtitle"></div>
+      <div id="dm-aliases"></div>
+      <div id="dm-tags"></div>
+      <div id="dm-scores"></div>
+      <div id="dm-prog-wrap">
+        <div id="dm-prog-bar"><div id="dm-prog-fill" class="progress-fill"></div></div>
+        <span id="dm-prog-text"></span>
+      </div>
+    </div>
+  </div>
+  <div id="detail-tabs">
+    <button class="dtab active" data-tab="info" onclick="switchDTab(this)">資訊</button>
+    <button class="dtab" data-tab="synopsis" onclick="switchDTab(this)">簡介</button>
+    <button class="dtab" data-tab="comment" onclick="switchDTab(this)">心得</button>
+    <button class="dtab" data-tab="controversy" onclick="switchDTab(this)">爭議</button>
+  </div>
+  <div id="detail-content"></div>
+  <div id="detail-series">
+    <div id="dm-series-label">同系列</div>
+    <div id="dm-series-scroll"></div>
+  </div>
+</div>
+</body>
+</html>

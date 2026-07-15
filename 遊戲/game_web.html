@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<script src="../gate.js"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>我的遊戲紀錄</title>
+<script src="data.js?v=1784123475"></script>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg:       #0d0d1a;
+  --bg2:      #13132a;
+  --bg3:      #1a1a35;
+  --bg4:      #22223f;
+  --border:   #2a2a50;
+  --accent:   #7c3aed;
+  --accent2:  #a78bfa;
+  --accent3:  #c4b5fd;
+  --green:    #10b981;
+  --yellow:   #f59e0b;
+  --red:      #ef4444;
+  --blue:     #60a5fa;
+  --text:     #e0e0f0;
+  --text2:    #9090b0;
+  --text3:    #555570;
+  --radius:   8px;
+}
+html { font-size: 14px; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Segoe UI', 'Microsoft JhengHei', sans-serif;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+a { color: inherit; text-decoration: none; }
+button { cursor: pointer; border: none; font-family: inherit; }
+
+/* ─── Layout（比照主 anime_web.html：#app 撐滿 100vh，只有 #content 內部
+   捲動，#header/#filter-bar 因為 flex-shrink:0 永遠固定在頂端不會被捲走）─── */
+#app { display: flex; flex-direction: column; height: 100vh; }
+
+/* ─── Header（比照 anime_web.html／comic_web.html，見 CLAUDE.md 第19/20節） ── */
+#header {
+  background: linear-gradient(135deg, #14142e 0%, #1a1a38 100%);
+  border-bottom: 1px solid var(--border);
+  padding: 0 20px;
+  box-shadow: 0 2px 20px rgba(0,0,0,0.4);
+  flex-shrink: 0;
+}
+#header-top { display: flex; align-items: center; gap: 16px; padding: 12px 0 8px; }
+#site-title {
+  font-size: 20px; font-weight: 800; letter-spacing: 3px;
+  background: linear-gradient(135deg, #a78bfa, #60a5fa);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+}
+#header-stats { font-size: 11px; color: var(--text3); margin-left: auto; }
+#last-updated { font-size: 11px; color: var(--text3); white-space: nowrap; cursor: default; }
+#last-updated-input {
+  background: var(--bg3); border: 1px solid var(--border); border-radius: 4px;
+  color: var(--text); font-size: 11px; padding: 1px 4px; color-scheme: dark;
+}
+#mock-banner {
+  font-size: 11px; color: var(--yellow); background: rgba(245,158,11,.12);
+  border: 1px solid rgba(245,158,11,.35); border-radius: 6px; padding: 3px 10px; margin-left: 10px;
+}
+#nav-tabs { display: flex; gap: 2px; }
+.nav-tab {
+  padding: 8px 22px; font-size: 13px; font-weight: 600;
+  border-radius: 6px 6px 0 0; transition: all .2s;
+  background: transparent; color: var(--text3); position: relative;
+}
+.nav-tab.active { background: var(--accent); color: #fff; }
+.nav-tab .tab-count {
+  display: inline-block; background: rgba(255,255,255,.15);
+  border-radius: 8px; padding: 1px 6px; font-size: 10px; margin-left: 4px;
+}
+
+/* ─── Filter bar ─────────────────────────── */
+#filter-bar {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  padding: 10px 20px; border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+#search-box {
+  width: 220px; padding: 6px 10px; font-size: 12px;
+  background: var(--bg3); border: 1px solid var(--border);
+  border-radius: 6px; color: var(--text); outline: none;
+}
+#search-box:focus { border-color: var(--accent); }
+#search-box::placeholder { color: var(--text3); }
+.filter-sep { width: 1px; align-self: stretch; background: var(--border); flex-shrink: 0; }
+.filter-group { display: flex; gap: 4px; flex-wrap: wrap; }
+.filt-btn {
+  padding: 5px 10px; font-size: 11px; border-radius: 6px;
+  background: var(--bg3); color: var(--text3); border: 1px solid var(--border);
+  white-space: nowrap;
+}
+.filt-btn.on { background: var(--accent); color: #fff; border-color: var(--accent); }
+#result-count { font-size: 11px; color: var(--text3); margin-left: auto; white-space: nowrap; }
+
+/* ─── Cards grid ─────────────────────────── */
+#content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px 20px 60px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--bg4) transparent;
+}
+#content::-webkit-scrollbar { width: 6px; }
+#content::-webkit-scrollbar-thumb { background: var(--bg4); border-radius: 3px; }
+#cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 12px;
+}
+.card {
+  display: flex; flex-direction: column;
+  background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius);
+  overflow: hidden; cursor: pointer; transition: border-color .15s, transform .15s;
+}
+.card:hover { border-color: var(--accent); transform: translateY(-2px); }
+.card .cover-wrap { width: 100%; aspect-ratio: 2/3; background: var(--bg3); overflow: hidden; position: relative; }
+.card .cover-wrap img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.card .cover-placeholder {
+  width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;
+  font-size: 32px; font-weight: 800; color: var(--text3); background: var(--bg3);
+}
+.card .card-body { padding: 8px 10px; display: flex; flex-direction: column; gap: 5px; flex: 1; }
+.card .card-title {
+  font-size: 12px; font-weight: 700; color: var(--text);
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.card .card-playtime { font-size: 10px; color: var(--text2); }
+.card .card-recent { font-size: 10px; color: var(--accent2); }
+.card .card-bottom-row { margin-top: auto; display: flex; align-items: center; justify-content: space-between; gap: 6px; }
+.status-badge { font-size: 10px; padding: 1px 7px; border-radius: 8px; white-space: nowrap; }
+.status-badge.want_to_play { color: var(--text3); background: var(--bg4); }
+.status-badge.playing      { color: var(--blue);  background: rgba(96,165,250,.12); }
+.status-badge.completed    { color: var(--green); background: rgba(16,185,129,.12); }
+.status-badge.dropped      { color: var(--red);   background: rgba(239,68,68,.12); }
+.card .card-score { font-size: 10px; color: var(--yellow); white-space: nowrap; }
+
+#empty-state { display: none; text-align: center; padding: 80px 20px; color: var(--text3); }
+#empty-state .es-icon { font-size: 48px; margin-bottom: 12px; }
+
+/* ─── Detail modal ─────────────────────────── */
+#detail-modal {
+  display: none; position: fixed; inset: 0; background: #000a; z-index: 200;
+  align-items: center; justify-content: center; padding: 20px;
+}
+#detail-modal.open { display: flex; }
+#detail-box {
+  background: var(--bg2); border: 1px solid var(--border); border-radius: 12px;
+  width: min(640px, 100%); max-height: 90vh; overflow-y: auto; padding: 22px 24px;
+  position: relative;
+}
+#detail-box .dm-top { display: flex; gap: 16px; margin-bottom: 14px; }
+#detail-box .dm-cover { width: 120px; height: 180px; object-fit: cover; border-radius: 8px; flex-shrink: 0; background: var(--bg3); }
+#detail-box .dm-title { font-size: 16px; font-weight: 700; color: var(--text); }
+#detail-box .dm-link { font-size: 11px; color: var(--accent2); margin-top: 6px; display: inline-block; }
+#detail-box .dm-link:hover { text-decoration: underline; }
+#detail-box .dm-playtime-line { font-size: 12px; color: var(--text2); margin-top: 8px; line-height: 1.7; }
+.dm-field { margin-bottom: 12px; }
+.dm-field label { display: block; font-size: 10px; color: var(--text3); margin-bottom: 4px; }
+.dm-field textarea, .dm-field input[type="text"] {
+  width: 100%; box-sizing: border-box;
+  background: var(--bg); border: 1px solid var(--border); border-radius: 5px;
+  color: var(--text); font-size: 12px; padding: 6px 9px; outline: none;
+}
+.dm-field textarea { resize: vertical; height: 70px; font-family: inherit; }
+.dm-field textarea:focus, .dm-field input:focus { border-color: var(--accent); }
+.dm-score-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.dm-score-btn {
+  width: 26px; height: 26px; border-radius: 6px; font-size: 11px;
+  background: var(--bg3); color: var(--text3); border: 1px solid var(--border);
+}
+.dm-score-btn.on { background: var(--yellow); color: #000; border-color: var(--yellow); }
+.dm-status-row { display: flex; gap: 6px; flex-wrap: wrap; }
+.dm-status-btn {
+  padding: 5px 12px; font-size: 11px; border-radius: 6px;
+  background: var(--bg3); color: var(--text3); border: 1px solid var(--border);
+}
+.dm-status-btn.on.want_to_play { background: var(--text3); color: #fff; border-color: var(--text3); }
+.dm-status-btn.on.playing      { background: var(--blue);  color: #000; border-color: var(--blue); }
+.dm-status-btn.on.completed    { background: var(--green); color: #000; border-color: var(--green); }
+.dm-status-btn.on.dropped      { background: var(--red);   color: #fff; border-color: var(--red); }
+.dm-tags-box { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+.dm-tag-chip {
+  display: inline-flex; align-items: center; gap: 5px; font-size: 11px;
+  background: var(--bg4); color: var(--text2); border-radius: 12px; padding: 3px 6px 3px 10px;
+}
+.dm-tag-chip button { background: none; color: var(--text3); font-size: 13px; line-height: 1; padding: 0 2px; }
+.dm-tag-chip button:hover { color: var(--red); }
+#detail-close { position: absolute; top: 14px; right: 18px; font-size: 20px; color: var(--text3); background: none; }
+#detail-close:hover { color: var(--text); }
+</style>
+</head>
+<body>
+
+<div id="app">
+
+<div id="header">
+  <div id="header-top">
+    <span id="site-title">MY RECORDS</span>
+    <span id="header-stats"></span>
+    <span id="last-updated" ondblclick="startEditLastUpdated()" title="雙擊可編輯"></span>
+    <span id="mock-banner" style="display:none">⚠ 目前是模擬資料，尚未同步真實 Steam 資料（見 steam_config.json）</span>
+  </div>
+  <div id="nav-tabs">
+    <button class="nav-tab" onclick="window.location.href='../動畫/anime_web.html'">
+      動畫 <span class="tab-count" id="anime-count"></span>
+    </button>
+    <button class="nav-tab" onclick="window.location.href='../漫畫/comic_web.html'">
+      漫畫 <span class="tab-count" id="manga-count"></span>
+    </button>
+    <button class="nav-tab active">
+      遊戲 <span class="tab-count" id="game-count"></span>
+    </button>
+  </div>
+</div>
+
+<div id="filter-bar">
+  <input id="search-box" type="text" placeholder="搜尋遊戲名稱…" oninput="applyFilters()">
+  <div class="filter-sep"></div>
+  <div class="filter-group" id="score-filters"></div>
+  <div class="filter-sep"></div>
+  <div class="filter-group" id="status-filters">
+    <button class="filt-btn on" id="status-btn-want_to_play" onclick="toggleShowStatus('want_to_play')" title="遊玩時數為0">⚪ 想玩</button>
+    <button class="filt-btn on" id="status-btn-playing" onclick="toggleShowStatus('playing')" title="有遊玩時數，尚未手動標記通關/棄坑">🔵 遊玩中</button>
+    <button class="filt-btn on" id="status-btn-completed" onclick="toggleShowStatus('completed')" title="手動標記為已通關">🟢 已通關</button>
+    <button class="filt-btn on" id="status-btn-dropped" onclick="toggleShowStatus('dropped')" title="手動標記為棄坑">🔴 棄坑</button>
+  </div>
+  <span id="result-count"></span>
+</div>
+
+<div id="content">
+  <div id="cards-grid"></div>
+  <div id="empty-state">
+    <div class="es-icon">🎮</div>
+    <div>沒有符合條件的遊戲</div>
+  </div>
+</div>
+
+</div>
+
+<div id="detail-modal">
+  <div id="detail-box">
+    <button id="detail-close" onclick="closeDetailModal()">✕</button>
+    <div class="dm-top">
+      <img class="dm-cover" id="dm-cover" onerror="_dmCoverFallback(this)">
+      <div>
+        <div class="dm-title" id="dm-title"></div>
+        <a class="dm-link" id="dm-link" target="_blank" rel="noopener">在 Steam 商店開啟 ↗</a>
+        <div class="dm-playtime-line" id="dm-playtime-line"></div>
+      </div>
+    </div>
+
+    <div class="dm-field">
+      <label>狀態</label>
+      <div class="dm-status-row" id="dm-status-row"></div>
+    </div>
+
+    <div class="dm-field">
+      <label>個人評分</label>
+      <div class="dm-score-row" id="dm-score-row"></div>
+    </div>
+
+    <div class="dm-field">
+      <label>標籤（輸入後按 Enter 新增）</label>
+      <div class="dm-tags-box" id="dm-tags-box"></div>
+      <input type="text" id="dm-tag-input" placeholder="輸入標籤，按 Enter 新增…">
+    </div>
+
+    <div class="dm-field">
+      <label>個人心得</label>
+      <textarea id="dm-comment" placeholder="寫點什麼…" onblur="saveCommentFromModal()"></textarea>
+    </div>
+  </div>
+</div>
+
+<script>
+const data = GAME_DATA.games;
+const state = {
+  search: '',
+  showScores: { 10:true, 9:true, 8:true, 7:true, 6:true, 5:true, 4:true, 3:true, 2:true, 1:true, none:true },
+  showStatuses: { want_to_play: true, playing: true, completed: true, dropped: true },
+};
+let _dmCurrentAppid = null;
+
+function escHtml(s) {
+  return (s ?? '').toString().replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+const STATUS_LABEL = { want_to_play: '⚪ 想玩', playing: '🔵 遊玩中', completed: '🟢 已通關', dropped: '🔴 棄坑' };
+
+function fmtHours(minutes) {
+  const h = minutes / 60;
+  return (h >= 10 ? Math.round(h) : Math.round(h * 10) / 10) + ' 小時';
+}
+
+function fmtLastPlayed(rtime) {
+  if (!rtime) return '尚未遊玩過';
+  const days = Math.floor((Date.now() / 1000 - rtime) / 86400);
+  if (days <= 0) return '今天';
+  if (days === 1) return '昨天';
+  if (days < 30) return `${days} 天前`;
+  if (days < 365) return `${Math.floor(days / 30)} 個月前`;
+  return `${Math.floor(days / 365)} 年前`;
+}
+
+// 封面圖直接用 Steam CDN 依 appid 組網址，不需要額外的 API 呼叫；
+// 三層 fallback：直式大圖 → 橫式header圖 → 顯示遊戲名稱首字的預留位置
+function coverUrl(appid, stage) {
+  if (stage === 0) return `https://cdn.akamai.steamstatic.com/steam/apps/${appid}/library_600x900.jpg`;
+  if (stage === 1) return `https://cdn.akamai.steamstatic.com/steam/apps/${appid}/header.jpg`;
+  return null;
+}
+
+function _imgFallback(img, appid) {
+  const stage = Number(img.dataset.stage || 0) + 1;
+  const next = coverUrl(appid, stage);
+  if (next) {
+    img.dataset.stage = stage;
+    img.src = next;
+  } else {
+    const ph = document.createElement('div');
+    ph.className = 'cover-placeholder';
+    ph.textContent = (img.alt || '?')[0];
+    img.replaceWith(ph);
+  }
+}
+
+function _dmCoverFallback(img) {
+  const stage = Number(img.dataset.stage || 0) + 1;
+  const e = data.find(x => x.appid === _dmCurrentAppid);
+  const next = coverUrl(_dmCurrentAppid, stage);
+  if (next) { img.dataset.stage = stage; img.src = next; }
+  else { img.style.visibility = 'hidden'; }
+}
+
+// ─── Filter ──────────────────────────────────────────────────────────────
+function filterData() {
+  const q = state.search.toLowerCase();
+  return data.filter(e => {
+    if (q && !e.name.toLowerCase().includes(q)) return false;
+    const scoreKey = e.score ? Math.round(e.score) : 'none';
+    if (!state.showScores[scoreKey]) return false;
+    if (!state.showStatuses[e.status]) return false;
+    return true;
+  }).sort((a, b) => b.playtime_forever - a.playtime_forever);
+}
+
+function toggleShowScore(key) {
+  state.showScores[key] = !state.showScores[key];
+  document.getElementById(`score-btn-${key}`).classList.toggle('on', state.showScores[key]);
+  applyFilters();
+}
+
+function toggleShowStatus(status) {
+  state.showStatuses[status] = !state.showStatuses[status];
+  document.getElementById(`status-btn-${status}`).classList.toggle('on', state.showStatuses[status]);
+  applyFilters();
+}
+
+function initScoreBar() {
+  const bar = document.getElementById('score-filters');
+  bar.innerHTML = '';
+  for (let s = 10; s >= 1; s--) {
+    const btn = document.createElement('button');
+    btn.className = 'filt-btn on';
+    btn.id = `score-btn-${s}`;
+    btn.title = `點擊可切換是否顯示評分${s}分的遊戲`;
+    btn.textContent = `★${s}`;
+    btn.onclick = () => toggleShowScore(s);
+    bar.appendChild(btn);
+  }
+  const noneBtn = document.createElement('button');
+  noneBtn.className = 'filt-btn on';
+  noneBtn.id = 'score-btn-none';
+  noneBtn.title = '點擊可切換是否顯示尚未評分的遊戲';
+  noneBtn.textContent = '未評分';
+  noneBtn.onclick = () => toggleShowScore('none');
+  bar.appendChild(noneBtn);
+}
+
+function applyFilters() {
+  state.search = document.getElementById('search-box').value;
+  renderContent(filterData());
+}
+
+// ─── Render ──────────────────────────────────────────────────────────────
+function renderCard(e) {
+  const recentHtml = e.playtime_2weeks
+    ? `<div class="card-recent">🔥 近兩週 ${fmtHours(e.playtime_2weeks)}</div>` : '';
+  return `<div class="card" onclick="openDetailModal(${e.appid})">
+    <div class="cover-wrap">
+      <img src="${coverUrl(e.appid, 0)}" alt="${escHtml(e.name)}" loading="lazy" onerror="_imgFallback(this, ${e.appid})">
+    </div>
+    <div class="card-body">
+      <div class="card-title">${escHtml(e.name)}</div>
+      <div class="card-playtime">${e.playtime_forever ? '已玩 ' + fmtHours(e.playtime_forever) : '尚未遊玩'}</div>
+      ${recentHtml}
+      <div class="card-bottom-row">
+        <span class="status-badge ${e.status}">${STATUS_LABEL[e.status]}</span>
+        <span class="card-score">${e.score ? '★' + e.score : ''}</span>
+      </div>
+    </div>
+  </div>`;
+}
+
+function renderContent(filtered) {
+  const grid = document.getElementById('cards-grid');
+  const empty = document.getElementById('empty-state');
+  document.getElementById('result-count').textContent = `顯示 ${filtered.length} / ${data.length} 款`;
+  if (!filtered.length) {
+    grid.innerHTML = '';
+    empty.style.display = 'block';
+    return;
+  }
+  empty.style.display = 'none';
+  grid.innerHTML = filtered.map(renderCard).join('');
+}
+
+function updateHeaderStats() {
+  const scored = data.filter(e => e.score).length;
+  const completed = data.filter(e => e.status === 'completed').length;
+  const totalHours = Math.round(data.reduce((sum, e) => sum + e.playtime_forever, 0) / 60);
+  document.getElementById('header-stats').textContent =
+    `${data.length} 款遊戲 · ${scored} 款有評分 · ${completed} 款已通關 · 累計 ${totalHours} 小時`;
+  document.getElementById('game-count').textContent = data.length;
+  if (GAME_DATA.is_mock_data) document.getElementById('mock-banner').style.display = 'inline-block';
+}
+
+// 動畫/漫畫 nav-tab 的數量徽章：只讀對方資料夾產生的一個小數字檔，見 CLAUDE.md 第19/20節，
+// 不載入/解析對方完整的 data.js，維持三個頁面互不需要懂對方資料結構的原則
+async function loadAnimeCount() {
+  try {
+    const res = await fetch('../動畫/anime_count.json');
+    if (!res.ok) return;
+    const j = await res.json();
+    document.getElementById('anime-count').textContent = j.count;
+  } catch { /* 動畫資料還沒建立時安靜略過 */ }
+}
+async function loadMangaCount() {
+  try {
+    const res = await fetch('../漫畫/count.json');
+    if (!res.ok) return;
+    const j = await res.json();
+    document.getElementById('manga-count').textContent = j.count;
+  } catch { /* 漫畫資料還沒建立時安靜略過 */ }
+}
+
+// 網頁最後更新時間：使用者自己手動維護的日期（見 ../last_updated.json），
+// 動畫/漫畫/遊戲三頁共用同一個檔案、顯示同一個日期
+// 網頁最後更新時間：動畫/漫畫/遊戲三頁各自獨立的一個日期值（各自的 last_updated.json，
+// 不是共用同一個檔案），可以直接在頁面上雙擊編輯，儲存只會動到這一頁自己的檔案，
+// 跟其他任何設定/資料完全無關
+let _lastUpdatedDate = null;
+
+async function loadLastUpdated() {
+  try {
+    const res = await fetch('last_updated.json');
+    if (!res.ok) return;
+    const j = await res.json();
+    _lastUpdatedDate = j.date;
+    renderLastUpdated();
+  } catch { /* 檔案還沒建立時安靜略過 */ }
+}
+
+function renderLastUpdated() {
+  const span = document.getElementById('last-updated');
+  if (!_lastUpdatedDate) { span.textContent = ''; return; }
+  const [y, m, d] = _lastUpdatedDate.split('-');
+  span.textContent = `最後更新：${y}年${Number(m)}月${Number(d)}日`;
+}
+
+function startEditLastUpdated() {
+  const span = document.getElementById('last-updated');
+  span.innerHTML = `<input type="date" id="last-updated-input" value="${_lastUpdatedDate || ''}">`;
+  const input = document.getElementById('last-updated-input');
+  input.focus();
+  input.onblur = saveLastUpdated;
+  input.onkeydown = e => { if (e.key === 'Enter') input.blur(); };
+}
+
+async function saveLastUpdated() {
+  const input = document.getElementById('last-updated-input');
+  const date = input.value;
+  if (!date) { renderLastUpdated(); return; }
+  try {
+    const res = await fetch('http://localhost:3737/api/save-last-updated', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ page: 'game', date })
+    });
+    const j = await res.json();
+    if (j.ok) _lastUpdatedDate = j.date;
+  } catch {
+    alert('無法連線到伺服器，請確認 動畫/server.py 已啟動（遊戲頁面共用同一個伺服器）。');
+  }
+  renderLastUpdated();
+}
+
+// ─── Detail modal ────────────────────────────────────────────────────────
+function openDetailModal(appid) {
+  const e = data.find(x => x.appid === appid);
+  if (!e) return;
+  _dmCurrentAppid = appid;
+  const cover = document.getElementById('dm-cover');
+  cover.dataset.stage = 0;
+  cover.style.visibility = 'visible';
+  cover.src = coverUrl(appid, 0);
+  cover.alt = e.name;
+  document.getElementById('dm-title').textContent = e.name;
+  document.getElementById('dm-link').href = `https://store.steampowered.com/app/${appid}/`;
+  document.getElementById('dm-playtime-line').innerHTML =
+    `總遊玩時數：${fmtHours(e.playtime_forever)}<br>` +
+    (e.playtime_2weeks ? `近兩週：${fmtHours(e.playtime_2weeks)}<br>` : '') +
+    `最後遊玩：${fmtLastPlayed(e.rtime_last_played)}`;
+  document.getElementById('dm-comment').value = e.comment || '';
+  renderScoreRow(e.score);
+  renderStatusRow(e.status);
+  renderTagsBox(e.tags || []);
+  document.getElementById('dm-tag-input').value = '';
+  document.getElementById('detail-modal').classList.add('open');
+}
+
+function closeDetailModal() {
+  document.getElementById('detail-modal').classList.remove('open');
+  _dmCurrentAppid = null;
+}
+
+function renderScoreRow(currentScore) {
+  const row = document.getElementById('dm-score-row');
+  row.innerHTML = '';
+  for (let s = 1; s <= 10; s++) {
+    const btn = document.createElement('button');
+    btn.className = 'dm-score-btn' + (currentScore === s ? ' on' : '');
+    btn.textContent = s;
+    btn.onclick = () => saveScoreFromModal(currentScore === s ? null : s);
+    row.appendChild(btn);
+  }
+}
+
+function renderStatusRow(currentStatus) {
+  const row = document.getElementById('dm-status-row');
+  row.innerHTML = '';
+  for (const st of ['want_to_play', 'playing', 'completed', 'dropped']) {
+    const btn = document.createElement('button');
+    btn.className = 'dm-status-btn ' + st + (currentStatus === st ? ' on' : '');
+    btn.textContent = STATUS_LABEL[st];
+    btn.onclick = () => saveStatusFromModal(st);
+    row.appendChild(btn);
+  }
+}
+
+function renderTagsBox(tags) {
+  const box = document.getElementById('dm-tags-box');
+  box.innerHTML = tags.map(t => `<span class="dm-tag-chip">${escHtml(t)}<button onclick="removeTagFromModal('${escHtml(t).replace(/'/g,"\\'")}')">✕</button></span>`).join('');
+}
+
+async function _postGame(endpoint, body) {
+  try {
+    const res = await fetch(`http://localhost:3737/api/game/${endpoint}`, {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify(body)
+    });
+    const j = await res.json();
+    if (!j.ok) { alert('儲存失敗：' + (j.error || '未知錯誤')); return null; }
+    return j;
+  } catch {
+    alert('無法連線到伺服器，請確認 動畫/server.py 已啟動（遊戲頁面共用同一個伺服器）。');
+    return null;
+  }
+}
+
+async function saveScoreFromModal(score) {
+  const appid = _dmCurrentAppid;
+  if (!appid) return;
+  const j = await _postGame('save-score', { appid, score });
+  if (!j) return;
+  const e = data.find(x => x.appid === appid);
+  e.score = j.score;
+  renderScoreRow(e.score);
+  updateHeaderStats();
+  applyFilters();
+}
+
+async function saveStatusFromModal(status) {
+  const appid = _dmCurrentAppid;
+  if (!appid) return;
+  const e = data.find(x => x.appid === appid);
+  const newStatus = e.status === status ? null : status;
+  const j = await _postGame('save-status', { appid, status: newStatus });
+  if (!j) return;
+  // status 是 null 的話代表清除手動標記，畫面上要顯示回自動推算的狀態，
+  // 跟 build.py 的 compute_status 邏輯保持一致（手動棄坑/已通關才需要覆寫）
+  e.status = newStatus || (e.playtime_forever ? 'playing' : 'want_to_play');
+  renderStatusRow(j.status);
+  updateHeaderStats();
+  applyFilters();
+}
+
+async function saveCommentFromModal() {
+  const appid = _dmCurrentAppid;
+  if (!appid) return;
+  const comment = document.getElementById('dm-comment').value;
+  const j = await _postGame('save-comment', { appid, comment });
+  if (!j) return;
+  const e = data.find(x => x.appid === appid);
+  e.comment = j.comment;
+}
+
+async function _saveTagsNow() {
+  const appid = _dmCurrentAppid;
+  const e = data.find(x => x.appid === appid);
+  const j = await _postGame('save-tags', { appid, tags: e.tags });
+  if (j) renderTagsBox(j.tags);
+}
+
+document.getElementById('dm-tag-input').addEventListener('keydown', function(ev) {
+  if (ev.key !== 'Enter') return;
+  const val = this.value.trim();
+  if (!val || !_dmCurrentAppid) return;
+  const e = data.find(x => x.appid === _dmCurrentAppid);
+  e.tags = e.tags || [];
+  if (!e.tags.includes(val)) e.tags.push(val);
+  this.value = '';
+  _saveTagsNow();
+});
+
+function removeTagFromModal(tag) {
+  const e = data.find(x => x.appid === _dmCurrentAppid);
+  e.tags = (e.tags || []).filter(t => t !== tag);
+  _saveTagsNow();
+}
+
+document.getElementById('detail-modal').addEventListener('click', function(e) {
+  if (e.target === this) closeDetailModal();
+});
+
+// ─── Init ────────────────────────────────────────────────────────────────
+updateHeaderStats();
+loadAnimeCount();
+loadMangaCount();
+loadLastUpdated();
+initScoreBar();
+applyFilters();
+</script>
+</body>
+</html>
