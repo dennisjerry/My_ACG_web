@@ -5,7 +5,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>我的紀錄</title>
-<script src="data.js?v=1784199049"></script>
+<script src="data.js?v=1784214682"></script>
 <style>
 /* ─── Reset & Base ─────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -228,6 +228,13 @@ button { cursor: pointer; border: none; font-family: inherit; }
 #search-box::placeholder { color: var(--text3); }
 
 .filter-group { display: flex; gap: 4px; flex-wrap: wrap; }
+/* 手機版篩選收合面板：桌機版用 display:contents 讓包裝用的div完全不影響原本的
+   flex排版（子元素照常變成 #filter-bar 的直接flex item），只有手機版才會真的
+   變成一個可展開/收合的區塊，見第24節 */
+#mobile-filter-toggle { display: none; }
+#mobile-filter-collapse { display: contents; }
+.mf-row { display: contents; }
+.mf-label { display: none; }
 .filter-sep {
   width: 1px;
   height: 20px;
@@ -1243,11 +1250,29 @@ button { cursor: pointer; border: none; font-family: inherit; }
   .nav-tab { padding: 6px 12px; font-size: 12px; }
 
   #filter-bar { padding: 6px 10px; gap: 5px; }
-  #search-box { width: 120px; font-size: 11px; padding: 4px 8px; }
+  #search-box { width: auto; flex: 1 1 180px; font-size: 13px; padding: 6px 10px; }
   .filt-btn { padding: 3px 7px; font-size: 10px; }
   .scan-btn { padding: 3px 8px; font-size: 10px; margin-left: 4px; }
   #add-anime-btn { padding: 3px 8px; font-size: 10px; }
   #result-count { width: 100%; order: 20; margin-left: 0; text-align: right; }
+
+  /* 評分/類型/狀態/公告收進一個可展開的「篩選」面板，節省手機上方空間（見第24節） */
+  #mobile-filter-toggle {
+    display: inline-flex; align-items: center; gap: 3px; flex-shrink: 0;
+    background: var(--bg3); border: 1px solid var(--border); color: var(--text2);
+    border-radius: 6px; padding: 6px 10px; font-size: 11px; cursor: pointer;
+  }
+  #mobile-filter-toggle.mf-active { border-color: var(--accent2); color: var(--accent3); }
+  #mobile-filter-summary { color: var(--text3); font-size: 9px; margin-left: 1px; }
+  #mobile-filter-collapse {
+    display: none; width: 100%;
+    background: var(--bg3); border: 1px solid var(--border); border-radius: 8px;
+    padding: 8px 10px 2px; margin-top: 2px;
+  }
+  #mobile-filter-collapse.mf-open { display: block; }
+  #mobile-filter-collapse .filter-sep { display: none; }
+  .mf-row { display: block; margin-bottom: 8px; }
+  .mf-label { display: block; font-size: 10px; color: var(--text3); margin-bottom: 3px; }
 
   /* 分類標籤列在手機上改用單一下拉選單，不逐個顯示按鈕（見 CLAUDE.md 第24節） */
   #cat-bar { padding: 6px 10px; }
@@ -1315,23 +1340,37 @@ button { cursor: pointer; border: none; font-family: inherit; }
   <!-- Filter Bar -->
   <div id="filter-bar">
     <input id="search-box" type="text" placeholder="搜尋動畫名稱…" oninput="applyFilters()">
-    <div class="filter-sep"></div>
-    <div class="filter-group" id="score-filters"></div>
-    <div class="filter-sep"></div>
-    <div class="filter-group" id="type-filters">
-      <button class="filt-btn on" id="type-btn-series" onclick="toggleShowType('series')" title="點擊可切換是否顯示連載動畫">連載</button>
-      <button class="filt-btn on" id="type-btn-movie" onclick="toggleShowType('movie')" title="點擊可切換是否顯示劇場版">劇場版</button>
-      <button class="filt-btn" id="type-btn-ova" onclick="toggleShowType('ova')" title="預設隱藏 OVA/特別篇，點擊可切換顯示">OVA・特番</button>
-      <button class="filt-btn" id="type-btn-short_anime" onclick="toggleShowType('short_anime')" title="預設隱藏，點擊可切換是否顯示泡麵番/短篇動畫">泡麵番</button>
-    </div>
-    <div class="filter-sep"></div>
-    <div class="filter-group" id="status-filters">
-      <button class="filt-btn on" id="status-btn-complete" onclick="toggleShowStatus('complete')" title="點擊可切換是否顯示已看完的動畫">看完</button>
-      <button class="filt-btn on" id="status-btn-partial" onclick="toggleShowStatus('partial')" title="點擊可切換是否顯示看一半的動畫">看一半</button>
-      <button class="filt-btn on" id="status-btn-unwatched" onclick="toggleShowStatus('unwatched')" title="點擊可切換是否顯示未看的動畫">未看</button>
+    <button id="mobile-filter-toggle" onclick="toggleMobileFilterPanel()"><span id="mf-icon">🔽</span> 篩選<span id="mobile-filter-summary"></span></button>
+    <div id="mobile-filter-collapse">
       <div class="filter-sep"></div>
-      <button class="filt-btn" id="news-mode-btn" onclick="toggleNewsMode()">公告/消息</button>
-      <button id="add-news-btn" onclick="openNewsModal()">＋ 新增公告</button>
+      <div class="mf-row"><span class="mf-label">評分</span><div class="filter-group" id="score-filters"></div></div>
+      <div class="filter-sep"></div>
+      <div class="mf-row">
+        <span class="mf-label">類型</span>
+        <div class="filter-group" id="type-filters">
+          <button class="filt-btn on" id="type-btn-series" onclick="toggleShowType('series')" title="點擊可切換是否顯示連載動畫">連載</button>
+          <button class="filt-btn on" id="type-btn-movie" onclick="toggleShowType('movie')" title="點擊可切換是否顯示劇場版">劇場版</button>
+          <button class="filt-btn" id="type-btn-ova" onclick="toggleShowType('ova')" title="預設隱藏 OVA/特別篇，點擊可切換顯示">OVA・特番</button>
+          <button class="filt-btn" id="type-btn-short_anime" onclick="toggleShowType('short_anime')" title="預設隱藏，點擊可切換是否顯示泡麵番/短篇動畫">泡麵番</button>
+        </div>
+      </div>
+      <div class="filter-sep"></div>
+      <div class="mf-row">
+        <span class="mf-label">狀態</span>
+        <div class="filter-group" id="status-filters">
+          <button class="filt-btn on" id="status-btn-complete" onclick="toggleShowStatus('complete')" title="點擊可切換是否顯示已看完的動畫">看完</button>
+          <button class="filt-btn on" id="status-btn-partial" onclick="toggleShowStatus('partial')" title="點擊可切換是否顯示看一半的動畫">看一半</button>
+          <button class="filt-btn on" id="status-btn-unwatched" onclick="toggleShowStatus('unwatched')" title="點擊可切換是否顯示未看的動畫">未看</button>
+        </div>
+      </div>
+      <div class="filter-sep"></div>
+      <div class="mf-row">
+        <span class="mf-label">公告</span>
+        <div class="filter-group" id="news-filters">
+          <button class="filt-btn" id="news-mode-btn" onclick="toggleNewsMode()">公告/消息</button>
+          <button id="add-news-btn" onclick="openNewsModal()">＋ 新增公告</button>
+        </div>
+      </div>
     </div>
     <div class="filter-sep"></div>
 <span id="result-count"></span>
@@ -2339,18 +2378,21 @@ function toggleShowScore(score) {
   state.showScores[score] = !state.showScores[score];
   document.getElementById(`score-btn-${score}`).classList.toggle('on', state.showScores[score]);
   applyFilters();
+  updateMobileFilterSummary();
 }
 
 function toggleShowType(type) {
   state.showTypes[type] = !state.showTypes[type];
   document.getElementById(`type-btn-${type}`).classList.toggle('on', state.showTypes[type]);
   applyFilters();
+  updateMobileFilterSummary();
 }
 
 function toggleShowStatus(status) {
   state.showStatuses[status] = !state.showStatuses[status];
   document.getElementById(`status-btn-${status}`).classList.toggle('on', state.showStatuses[status]);
   applyFilters();
+  updateMobileFilterSummary();
 }
 
 function toggleNewsMode() {
@@ -2358,6 +2400,29 @@ function toggleNewsMode() {
   document.getElementById('news-mode-btn').classList.toggle('on', state.newsMode);
   document.getElementById('add-news-btn').classList.toggle('visible', state.newsMode);
   applyFilters();
+  updateMobileFilterSummary();
+}
+
+// ─── 手機版篩選收合面板（評分/類型/狀態/公告），見第24節 ─────────────────────
+function toggleMobileFilterPanel() {
+  const panel = document.getElementById('mobile-filter-collapse');
+  const open = panel.classList.toggle('mf-open');
+  document.getElementById('mf-icon').textContent = open ? '🔼' : '🔽';
+}
+
+function updateMobileFilterSummary() {
+  const el = document.getElementById('mobile-filter-summary');
+  const btn = document.getElementById('mobile-filter-toggle');
+  if (!el || !btn) return;
+  const scoresDefault = Object.values(state.showScores).every(v => v === true);
+  const typesDefault = state.showTypes.series === true && state.showTypes.movie === true &&
+                        state.showTypes.ova === false && state.showTypes.short_anime === false;
+  const statusesDefault = state.showStatuses.complete === true && state.showStatuses.partial === true &&
+                           state.showStatuses.unwatched === true;
+  const newsDefault = state.newsMode === false;
+  const allDefault = scoresDefault && typesDefault && statusesDefault && newsDefault;
+  el.textContent = allDefault ? '' : ' · 已調整';
+  btn.classList.toggle('mf-active', !allDefault);
 }
 
 // ─── 拖拉排序（見 CLAUDE.md 第18節⑧）────────────────────────────────────────
@@ -3122,6 +3187,7 @@ function init() {
   initScoreBar();
   initCatBar();
   applyFilters();
+  updateMobileFilterSummary();
 }
 
 init();
