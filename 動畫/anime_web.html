@@ -1287,6 +1287,7 @@ button { cursor: pointer; border: none; font-family: inherit; }
     <button class="scan-btn" id="changelog-btn" onclick="openChangeLogModal()">📋 變更紀錄</button>
     <button class="scan-btn" id="score-update-btn" onclick="runScoreUpdate()">💯 分數更新</button>
     <button class="scan-btn" id="status-scan-btn" onclick="runStatusScan()">🔍 狀態掃描</button>
+    <button class="scan-btn" id="publish-static-btn" onclick="runPublishStatic()">🚀 發布到GitHub</button>
     <button id="add-anime-btn" onclick="openAnimeModal()">＋ 新增動畫</button>
   </div>
 
@@ -2477,6 +2478,25 @@ async function runStatusScan() {
     if (!j.ok) { alert('狀態掃描失敗：' + (j.error || '未知錯誤')); return; }
     alert(`狀態掃描完成：\n- ${j.confirmed_count} 筆 upcoming 已確認並自動套用\n- ${j.suggestion_count} 筆新續作建議（詳情見「變更紀錄」，需要手動查證後再新增，不會自動寫入）`);
     window.location.reload();
+  } catch {
+    _scanOverlay(false);
+    btn.disabled = false;
+    alert('無法連線到伺服器，請確認 server.py 已啟動。');
+  }
+}
+
+async function runPublishStatic() {
+  if (!confirm('確定要重新匯出唯讀展示版並發布到 GitHub 嗎？\n這會讓網站上的內容更新成目前的最新資料（公開網址上看得到）。')) return;
+  const btn = document.getElementById('publish-static-btn');
+  btn.disabled = true;
+  _scanOverlay(true, '正在重新匯出並推送到 GitHub，請稍候…');
+  try {
+    const res = await fetch('http://localhost:3737/api/publish-static', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
+    const j = await res.json();
+    _scanOverlay(false);
+    btn.disabled = false;
+    if (!j.ok) { alert(`發布失敗（階段：${j.stage || '未知'}）：\n` + (j.error || '未知錯誤')); return; }
+    alert(j.message || '已發布到 GitHub');
   } catch {
     _scanOverlay(false);
     btn.disabled = false;
