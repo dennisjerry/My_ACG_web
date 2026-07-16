@@ -5,7 +5,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>我的紀錄</title>
-<script src="data.js?v=1784121802"></script>
+<script src="data.js?v=1784176015"></script>
 <style>
 /* ─── Reset & Base ─────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -592,6 +592,8 @@ button { cursor: pointer; border: none; font-family: inherit; }
 #status-scan-btn:hover:not(:disabled) { background: var(--accent); color: #fff; }
 #changelog-btn { border: 1px solid var(--text3); color: var(--text2); }
 #changelog-btn:hover { background: var(--bg4); color: var(--text); }
+#publish-static-btn { border: 1px solid #fff; color: #fff; }
+#publish-static-btn:hover:not(:disabled) { background: #fff; color: #000; }
 
 #scanlog-modal {
   display: none; position: fixed; inset: 0;
@@ -1272,24 +1274,8 @@ button { cursor: pointer; border: none; font-family: inherit; }
       <button id="add-news-btn" onclick="openNewsModal()">＋ 新增公告</button>
     </div>
     <div class="filter-sep"></div>
-    <button class="filt-btn" id="reorder-toggle-btn" onclick="toggleReorderMode()" title="開啟後可在同一個年份/季度區塊內拖曳卡片調整顯示順序">🔀 排序模式</button>
-    <span class="sort-hint">?
-      <div class="sort-hint-tip">
-        <div class="sht-title">每季度排序原則</div>
-        <div class="sht-item">1. 季度數字（N越高排越前面）</div>
-        <div class="sht-item">2. 想看程度（最想看最優先 &gt;&gt; 稍微想看）</div>
-        <div class="sht-item">3. 異世界(劍與魔法) &gt; 惡役千金 &gt; 校園戀愛 &gt; 戀愛 &gt; 輕百合 &gt; 青年熱血 &gt; 賣肉 &gt; 其他</div>
-        <div class="sht-item">4. OVA、特別篇</div>
-        <div class="sht-item">5. 劇場版</div>
-      </div>
-    </span>
-    <span id="result-count"></span>
-    <button class="scan-btn" id="changelog-btn" onclick="openChangeLogModal()">📋 變更紀錄</button>
-    <button class="scan-btn" id="score-update-btn" onclick="runScoreUpdate()">💯 分數更新</button>
-    <button class="scan-btn" id="status-scan-btn" onclick="runStatusScan()">🔍 狀態掃描</button>
-    <button class="scan-btn" id="publish-static-btn" onclick="runPublishStatic()">🚀 發布到GitHub</button>
-    <button id="add-anime-btn" onclick="openAnimeModal()">＋ 新增動畫</button>
-  </div>
+<span id="result-count"></span>
+</div>
 
   <!-- 執行中遮罩 -->
   <div id="scan-overlay">
