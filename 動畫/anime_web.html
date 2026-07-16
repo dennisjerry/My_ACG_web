@@ -976,6 +976,16 @@ button { cursor: pointer; border: none; font-family: inherit; }
   margin-right: 4px;
   flex-shrink: 0;
 }
+#cat-select-mobile {
+  display: none;
+  font-size: 12px;
+  padding: 5px 8px;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  outline: none;
+}
 
 /* ─── News Card ─────────────────────────────── */
 .news-card {
@@ -1219,6 +1229,53 @@ button { cursor: pointer; border: none; font-family: inherit; }
 .series-thumb-badge.ova   { color: var(--green);  background: rgba(16,185,129,.12); }
 .series-thumb-badge.short { color: var(--text3);  background: var(--bg4); }
 .series-thumb-badge.upcoming { color: var(--accent2); background: rgba(167,139,250,.15); }
+
+/* ─── Mobile（預設以 iPhone 14 Pro Max 的 430px 邏輯寬度為基準設計）────────── */
+@media (max-width: 600px) {
+  #header { padding: 0 10px; }
+  #header-top { gap: 6px; flex-wrap: wrap; padding: 8px 0 6px; }
+  #site-title { font-size: 15px; letter-spacing: 1px; }
+  #header-stats { font-size: 9px; width: 100%; margin-left: 0; order: 10; }
+  #last-updated { font-size: 9px; }
+  #mock-banner { font-size: 9px; }
+  #server-status { font-size: 9px; margin-left: 6px; }
+  #nav-tabs { gap: 1px; }
+  .nav-tab { padding: 6px 12px; font-size: 12px; }
+
+  #filter-bar { padding: 6px 10px; gap: 5px; }
+  #search-box { width: 120px; font-size: 11px; padding: 4px 8px; }
+  .filt-btn { padding: 3px 7px; font-size: 10px; }
+  .scan-btn { padding: 3px 8px; font-size: 10px; margin-left: 4px; }
+  #add-anime-btn { padding: 3px 8px; font-size: 10px; }
+  #result-count { width: 100%; order: 20; margin-left: 0; text-align: right; }
+
+  /* 分類標籤列在手機上改用單一下拉選單，不逐個顯示按鈕（見 CLAUDE.md 第24節） */
+  #cat-bar { padding: 6px 10px; }
+  #cat-label, #cat-bar .cat-btn, #cat-bar .cat-sep { display: none; }
+  #cat-select-mobile { display: block; width: 100%; }
+
+  #sidebar { width: 42px; }
+  .year-btn { padding: 6px 1px; font-size: 9px; }
+  .year-btn .ynum { font-size: 10px; }
+  .year-btn .ycnt { font-size: 8px; }
+
+  #content { padding: 10px 8px 24px; }
+  .season-label { font-size: 15px; }
+  .season-range { font-size: 12px; }
+  .year-label { font-size: 15px; }
+
+  /* 卡片改成單欄，但保留橫式排版（封面在左、資訊在右）——縮小到單欄後
+     文字欄位反而比桌機版最小斷點時更寬裕，不需要改成上下堆疊 */
+  .cards-grid { grid-template-columns: 1fr; gap: 8px; }
+
+  /* 詳情視窗：封面也改成上下堆疊 */
+  #detail-box { width: 96vw; max-height: 92vh; }
+  #detail-header { flex-direction: column; padding: 16px 16px 10px; }
+  #detail-cover { width: 140px; min-width: 0; height: 198px; margin: 0 auto 12px; }
+  #detail-meta { padding-right: 0; }
+  #detail-tabs { padding: 0 12px; overflow-x: auto; }
+  #detail-content { padding: 12px 16px; max-height: 32vh; }
+}
 </style>
 </head>
 <body>
@@ -1274,8 +1331,24 @@ button { cursor: pointer; border: none; font-family: inherit; }
       <button id="add-news-btn" onclick="openNewsModal()">＋ 新增公告</button>
     </div>
     <div class="filter-sep"></div>
-<span id="result-count"></span>
-</div>
+    <button class="filt-btn" id="reorder-toggle-btn" onclick="toggleReorderMode()" title="開啟後可在同一個年份/季度區塊內拖曳卡片調整顯示順序">🔀 排序模式</button>
+    <span class="sort-hint">?
+      <div class="sort-hint-tip">
+        <div class="sht-title">每季度排序原則</div>
+        <div class="sht-item">1. 季度數字（N越高排越前面）</div>
+        <div class="sht-item">2. 想看程度（最想看最優先 &gt;&gt; 稍微想看）</div>
+        <div class="sht-item">3. 異世界(劍與魔法) &gt; 惡役千金 &gt; 校園戀愛 &gt; 戀愛 &gt; 輕百合 &gt; 青年熱血 &gt; 賣肉 &gt; 其他</div>
+        <div class="sht-item">4. OVA、特別篇</div>
+        <div class="sht-item">5. 劇場版</div>
+      </div>
+    </span>
+    <span id="result-count"></span>
+    <button class="scan-btn" id="changelog-btn" onclick="openChangeLogModal()">📋 變更紀錄</button>
+    <button class="scan-btn" id="score-update-btn" onclick="runScoreUpdate()">💯 分數更新</button>
+    <button class="scan-btn" id="status-scan-btn" onclick="runStatusScan()">🔍 狀態掃描</button>
+    <button class="scan-btn" id="publish-static-btn" onclick="runPublishStatic()">🚀 發布到GitHub</button>
+    <button id="add-anime-btn" onclick="openAnimeModal()">＋ 新增動畫</button>
+  </div>
 
   <!-- 執行中遮罩 -->
   <div id="scan-overlay">
@@ -1425,6 +1498,9 @@ button { cursor: pointer; border: none; font-family: inherit; }
   <div id="cat-bar">
     <span id="cat-label">類別：</span>
     <button class="cat-btn on" data-cat="all" onclick="setCat(this)" style="color:var(--text2)">全部</button>
+    <select id="cat-select-mobile" onchange="setCatFromSelect(this)">
+      <option value="all">全部類別</option>
+    </select>
   </div>
 
   <!-- Main -->
@@ -2570,11 +2646,21 @@ function setCat(btn) {
   document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('on'));
   btn.classList.add('on');
   state.catFilter = btn.dataset.cat;
+  const sel = document.getElementById('cat-select-mobile');
+  if (sel) sel.value = state.catFilter;
+  applyFilters();
+}
+
+function setCatFromSelect(sel) {
+  const id = sel.value;
+  document.querySelectorAll('.cat-btn').forEach(b => b.classList.toggle('on', b.dataset.cat === id));
+  state.catFilter = id;
   applyFilters();
 }
 
 function initCatBar() {
   const bar = document.getElementById('cat-bar');
+  const mobileSelect = document.getElementById('cat-select-mobile');
   const groupOrder = [
     '轉生・穿越・網文公式', '成長・王道', '戀愛・日常・治癒',
     '智鬥・懸疑・策略', '科幻・機甲・末日', '職場・社會寫實',
@@ -2592,13 +2678,19 @@ function initCatBar() {
   const counts = {};
   data.forEach(e => (e.tags || []).forEach(t => counts[t] = (counts[t] || 0) + 1));
   let lastGroup = null;
+  let optHtml = '';
+  let optGroupOpen = false;
   catOrder.forEach(([id, cat]) => {
     if (cat.group !== lastGroup) {
       lastGroup = cat.group;
       const sep = document.createElement('span');
+      sep.className = 'cat-sep';
       sep.style.cssText = 'color:var(--text3);font-size:9px;white-space:nowrap;padding:0 4px;flex-shrink:0';
       sep.textContent = '│';
       bar.appendChild(sep);
+      if (optGroupOpen) optHtml += '</optgroup>';
+      optHtml += `<optgroup label="${escHtml(cat.group)}">`;
+      optGroupOpen = true;
     }
     const btn = document.createElement('button');
     btn.className = 'cat-btn';
@@ -2615,7 +2707,9 @@ function initCatBar() {
     btn.style.borderColor = cat.color + '50';
     btn.textContent = n > 0 ? `${cat.label} ${n}` : cat.label;
     bar.appendChild(btn);
+    optHtml += `<option value="${escHtml(id)}"${n === 0 ? ' disabled' : ''}>${escHtml(n > 0 ? `${cat.label} ${n}` : cat.label)}</option>`;
   });
+  if (optGroupOpen) optHtml += '</optgroup>';
 
   // 加入使用者自訂標籤
   const userCounts = {};
@@ -2623,10 +2717,12 @@ function initCatBar() {
   const userTags = Object.entries(userCounts).sort((a, b) => b[1] - a[1]);
   if (userTags.length) {
     const sep = document.createElement('span');
+    sep.className = 'cat-sep';
     sep.dataset.usersep = '1';
     sep.style.cssText = 'color:var(--text3);font-size:9px;white-space:nowrap;padding:0 4px;flex-shrink:0';
     sep.textContent = '│';
     bar.appendChild(sep);
+    optHtml += '<optgroup label="自訂標籤">';
     userTags.forEach(([tag, cnt]) => {
       const btn = document.createElement('button');
       btn.className = 'cat-btn';
@@ -2637,7 +2733,14 @@ function initCatBar() {
       btn.style.borderColor = '#c4b5fd50';
       btn.textContent = `${tag} ${cnt}`;
       bar.appendChild(btn);
+      optHtml += `<option value="${escHtml(tag)}">${escHtml(tag)} ${cnt}</option>`;
     });
+    optHtml += '</optgroup>';
+  }
+
+  if (mobileSelect) {
+    mobileSelect.innerHTML = '<option value="all">全部類別</option>' + optHtml;
+    mobileSelect.value = state.catFilter;
   }
 }
 
