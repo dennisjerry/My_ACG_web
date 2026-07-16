@@ -1287,15 +1287,7 @@ button { cursor: pointer; border: none; font-family: inherit; }
       <span id="site-title">MY RECORDS</span>
       <span id="header-stats"></span>
       <span id="last-updated" ondblclick="startEditLastUpdated()" title="雙擊可編輯"></span>
-      <span id="server-status" title="伺服器狀態">⬤ 連線中<span id="server-countdown" style="opacity:.45;font-size:9px"></span></span>
-      <span id="server-help">?
-        <div id="server-help-tip">
-          <div class="sht-row"><span style="color:#4ade80">⬤</span> 伺服器運作中 — 正常，只有 1 個</div>
-          <div class="sht-row"><span style="color:#fb923c">⬤</span> 伺服器 ×N（建議重開） — 多個殘留，請重開 .bat</div>
-          <div class="sht-row"><span style="color:#f87171">⬤</span> 伺服器未連線 — 請執行開啟動畫紀錄.bat</div>
-        </div>
-      </span>
-    </div>
+</div>
     <div id="nav-tabs">
       <button class="nav-tab active">
         動畫 <span class="tab-count" id="anime-count">0</span>
@@ -3123,60 +3115,6 @@ function init() {
 
 init();
 
-// ─── Server Status Indicator ──────────────────────────────────────────────────
-function setStatusText(el, text) {
-  // 只改第一個文字節點，保留 countdown span
-  const node = [...el.childNodes].find(n => n.nodeType === 3);
-  if (node) node.textContent = text;
-  else el.insertBefore(document.createTextNode(text), el.firstChild);
-}
-
-async function checkServer() {
-  const el = document.getElementById('server-status');
-  try {
-    const res = await fetch('http://localhost:3737/api/status', { cache: 'no-store' });
-    const j = await res.json();
-    if (j.count > 1) {
-      el.className = 'multi';
-      setStatusText(el, `⬤ 伺服器 ×${j.count}（建議重開）`);
-      el.title = `目前有 ${j.count} 個 server.py 在執行，可能有衝突。\n請關閉後重新執行開啟動畫紀錄.bat`;
-    } else {
-      el.className = '';
-      setStatusText(el, `⬤ 伺服器運作中 (PID ${j.pid})`);
-      el.title = `連線正常 · PID ${j.pid}`;
-    }
-  } catch {
-    el.className = 'offline';
-    setStatusText(el, '⬤ 伺服器未連線');
-    el.title = '無法連線到 localhost:3737，請執行開啟動畫紀錄.bat';
-  }
-}
-let _countdown = 15;
-let _countdownEl = null;
-
-function startCountdown() {
-  _countdown = 15;
-  if (!_countdownEl) return;
-  _countdownEl.textContent = ` ${_countdown}s`;
-  clearInterval(_countdownEl._timer);
-  _countdownEl._timer = setInterval(() => {
-    _countdown--;
-    if (_countdown <= 0) {
-      clearInterval(_countdownEl._timer);
-    } else {
-      _countdownEl.textContent = ` ${_countdown}s`;
-    }
-  }, 1000);
-}
-
-checkServer().then(() => {
-  _countdownEl = document.getElementById('server-countdown');
-  startCountdown();
-});
-
-setInterval(() => {
-  checkServer().then(() => startCountdown());
-}, 15000);
 
 // ─── Detail Modal ──────────────────────────────────────────────────────────
 
