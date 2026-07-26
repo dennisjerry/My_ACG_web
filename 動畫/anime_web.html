@@ -5,7 +5,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>我的紀錄</title>
-<script src="data.js?v=1784214682"></script>
+<script src="data.js?v=1785077985"></script>
 <style>
 /* ─── Reset & Base ─────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -1139,6 +1139,11 @@ button { cursor: pointer; border: none; font-family: inherit; }
   background: var(--bg); border: 1px solid var(--accent);
   border-radius: 3px; color: var(--text); outline: none; text-align: center;
 }
+.dm-alias-input {
+  width: 100%; font-size: 10px; padding: 2px 6px; box-sizing: border-box;
+  background: var(--bg); border: 1px solid var(--accent);
+  border-radius: 3px; color: var(--text); outline: none;
+}
 
 /* Tabs */
 #detail-tabs {
@@ -1456,6 +1461,11 @@ button { cursor: pointer; border: none; font-family: inherit; }
             <label>個人評分（可選，不是bgm評分）</label>
             <input id="af-score" type="number" placeholder="尚未看" min="1" max="10" step="0.5">
           </div>
+        </div>
+
+        <div class="news-field">
+          <label>別名（日文原名/英文標題/其他別名，可編輯，用「、」或逗號分隔）</label>
+          <input id="af-aliases" type="text" placeholder="例：進撃の巨人、Attack on Titan">
         </div>
 
         <div class="news-field">
@@ -1943,7 +1953,7 @@ function closeNewsModal() {
 let _afPicked = null;  // 目前選定的 bgm 候選詳細資料（/api/bgm-detail 回傳內容）
 
 function openAnimeModal() {
-  ['af-title','af-year','af-month','af-watched','af-total','af-score','af-comment'].forEach(id => {
+  ['af-title','af-year','af-month','af-watched','af-total','af-score','af-comment','af-aliases'].forEach(id => {
     document.getElementById(id).value = '';
   });
   document.getElementById('af-season').value = '';
@@ -2045,6 +2055,9 @@ function fillAfDetailForm(j) {
   document.getElementById('af-type').value  = j.platform === '剧场版' ? 'movie' : 'series';
   document.getElementById('af-total').value = j.eps || '';
   document.getElementById('af-synopsis-preview').value = j.summary || '';
+  const titleNow = document.getElementById('af-title').value.trim();
+  const aliasSeed = Array.from(new Set([j.name, j.name_cn].filter(a => a && a.trim() && a.trim() !== titleNow)));
+  document.getElementById('af-aliases').value = aliasSeed.join('、');
   const infoboxLines = (j.infobox || [])
     .filter(x => ['导演','原作','动画制作','音乐','人物设定','脚本','製作','制作'].includes(x.key))
     .map(x => `${x.key}：${typeof x.value === 'string' ? x.value : (x.value || []).map(v => v.v).join('、')}`);
@@ -2069,6 +2082,9 @@ async function submitAnimeVerified() {
   const title = document.getElementById('af-title').value.trim();
   if (!title) { alert('請填寫動畫名稱'); return; }
   const tags = Array.from(document.querySelectorAll('#af-tags-box input:checked')).map(el => el.value);
+  const aliases = Array.from(new Set(
+    document.getElementById('af-aliases').value.split(/[,，、]/).map(s => s.trim()).filter(s => s && s !== title)
+  ));
   const payload = {
     title,
     year:  document.getElementById('af-year').value  || null,
@@ -2080,6 +2096,7 @@ async function submitAnimeVerified() {
     score:   document.getElementById('af-score').value || null,
     comment: document.getElementById('af-comment').value.trim(),
     tags,
+    aliases,
     bgm_id:         _afPicked.bgm_id,
     bgm_score:      _afPicked.score,
     bgm_image_url:  _afPicked.image,
@@ -2306,6 +2323,18 @@ function renderCardScores(e) {
 function rerenderCardScore(e) {
   const wrap = document.getElementById('scores-' + e.title.replace(/['"<>&]/g, '_'));
   if (wrap) wrap.innerHTML = renderCardScores(e);
+}
+
+function rerenderCardAlias(e) {
+  const el = document.getElementById('alias-' + e.title.replace(/['"<>&]/g, '_'));
+  if (!el) return;
+  if (e.aliases && e.aliases.length) {
+    el.textContent = e.aliases.join(' · ');
+    el.style.display = '';
+  } else {
+    el.textContent = '';
+    el.style.display = 'none';
+  }
 }
 
 async function toggleWantToWatch(event, title) {
@@ -2889,7 +2918,7 @@ function renderCard(e) {
           ${heartHtml}
           <button class="del-btn" onclick="confirmDelete('${escHtml(e.title).replace(/'/g,"&#39;")}')">🗑</button>
         </div>
-        ${(e.aliases && e.aliases.length) ? `<div class="card-alias">${e.aliases.map(a => escHtml(a)).join(' · ')}</div>` : ''}
+        <div class="card-alias" id="alias-${escHtml(e.title).replace(/['"<>&]/g,'_')}"${(e.aliases && e.aliases.length) ? '' : ' style="display:none"'}>${(e.aliases || []).map(a => escHtml(a)).join(' · ')}</div>
         <div class="card-tags" id="tags-${escHtml(e.title).replace(/['"<>&]/g,'_')}">
           ${catTagHtml}
           ${renderUserTags(e)}
@@ -3238,11 +3267,16 @@ function _dmRender(e, keepTab) {
   document.getElementById('dm-title').textContent    = e.title;
   document.getElementById('dm-subtitle').textContent = parts.join(' · ');
   const aliasEl = document.getElementById('dm-aliases');
+  aliasEl.style.display = '';
+  aliasEl.className = 'dm-editable';
+  aliasEl.title = '點擊編輯別名';
+  aliasEl.onclick = () => dmStartEditAliases(e.title);
   if (e.aliases && e.aliases.length) {
     aliasEl.textContent = e.aliases.join(' · ');
-    aliasEl.style.display = '';
+    aliasEl.style.fontStyle = 'normal';
   } else {
-    aliasEl.style.display = 'none';
+    aliasEl.textContent = '（無別名，點擊新增）';
+    aliasEl.style.fontStyle = 'italic';
   }
 
   // Tags
@@ -3419,6 +3453,47 @@ async function dmSaveScore(title, rawValue) {
   const e = data.find(x => x.title === title);
   if (e) _dmRender(e, _dmActiveTab());
   if (e) rerenderCardScore(e);
+}
+
+// ─── Detail Modal: Aliases Edit ────────────────────────────────────────────
+function dmStartEditAliases(title) {
+  const e = data.find(x => x.title === title);
+  if (!e) return;
+  const wrap = document.getElementById('dm-aliases');
+  if (wrap.querySelector('.dm-alias-input')) return;
+  wrap.onclick = null;
+  const cur = (e.aliases || []).join('、');
+  wrap.innerHTML = `<input id="dm-alias-input" class="dm-alias-input" type="text" value="${escHtml(cur)}" placeholder="日文原名、英文標題…（用、或逗號分隔）">`;
+  const input = document.getElementById('dm-alias-input');
+  input.focus(); input.select();
+
+  let saved = false;
+  const commit = () => { if (!saved) { saved = true; dmSaveAliases(title, input.value); } };
+  input.addEventListener('keydown', ev => {
+    ev.stopPropagation();
+    if (ev.key === 'Enter') { ev.preventDefault(); commit(); }
+    if (ev.key === 'Escape') { saved = true; _dmRender(e, _dmActiveTab()); }
+  });
+  input.addEventListener('click', ev => ev.stopPropagation());
+  input.addEventListener('blur', () => setTimeout(commit, 120));
+}
+
+async function dmSaveAliases(title, rawValue) {
+  const aliases = Array.from(new Set(
+    (rawValue || '').split(/[,，、]/).map(s => s.trim()).filter(s => s && s !== title)
+  ));
+  try {
+    const res = await fetch('http://localhost:3737/api/save-aliases', {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ title, aliases })
+    });
+    if (!res.ok) throw new Error('server');
+    const e = data.find(x => x.title === title);
+    if (e) e.aliases = aliases;
+  } catch { alert('無法儲存，請確認伺服器已啟動'); }
+  const e = data.find(x => x.title === title);
+  if (e) _dmRender(e, _dmActiveTab());
+  if (e) rerenderCardAlias(e);
 }
 
 // ─── Detail Modal: Progress Edit ───────────────────────────────────────────
