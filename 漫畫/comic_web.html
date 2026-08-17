@@ -5,7 +5,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>我的漫畫紀錄</title>
-<script src="data.js?v=1784214682"></script>
+<script src="data.js?v=1786967071"></script>
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 :root {
@@ -95,6 +95,12 @@ button { cursor: pointer; border: none; font-family: inherit; }
 }
 .filt-btn.on { background: var(--accent); color: #fff; border-color: var(--accent); }
 #result-count { font-size: 11px; color: var(--text3); margin-left: auto; white-space: nowrap; }
+#sort-select {
+  padding: 5px 8px; font-size: 11px; border-radius: 6px;
+  background: var(--bg3); color: var(--text); border: 1px solid var(--border);
+  outline: none; cursor: pointer;
+}
+#sort-select:focus { border-color: var(--accent); }
 
 /* ─── Cards grid ─────────────────────────── */
 #content {
@@ -117,8 +123,21 @@ button { cursor: pointer; border: none; font-family: inherit; }
   overflow: hidden; cursor: pointer;
 }
 .card:hover { border-color: var(--accent); }
-.card .cover-wrap { width: 100%; aspect-ratio: 3/4; background: var(--bg3); overflow: hidden; }
-.card .cover-wrap img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.card.want-to-read { border-color: var(--yellow); box-shadow: 0 0 0 1px var(--yellow), 0 4px 16px rgba(245,158,11,.2); }
+.card.want-to-read:hover { box-shadow: 0 0 0 1px var(--yellow), 0 6px 24px rgba(245,158,11,.35); }
+.card .cover-wrap { width: 100%; aspect-ratio: 3/4; background: var(--bg3); overflow: hidden; position: relative; }
+.card .cover-wrap img { width: 100%; height: 100%; object-fit: contain; display: block; }
+.heart-btn {
+  position: absolute; top: 6px; right: 6px; z-index: 2;
+  width: 24px; height: 24px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px; line-height: 1;
+  background: rgba(0,0,0,.5); border: 1px solid transparent;
+  cursor: pointer; color: #fff; backdrop-filter: blur(2px);
+  transition: all .15s;
+}
+.heart-btn:hover { background: rgba(0,0,0,.7); border-color: #f59e0b55; }
+.heart-btn.active { color: var(--yellow); background: rgba(0,0,0,.55); }
 .card .card-body { padding: 8px 10px; display: flex; flex-direction: column; gap: 4px; flex: 1; }
 .card .card-title {
   font-size: 12px; font-weight: 700; color: var(--text);
@@ -130,7 +149,9 @@ button { cursor: pointer; border: none; font-family: inherit; }
 .status-dot.caught_up { background: var(--green); }
 .status-dot.behind { background: var(--yellow); }
 .status-dot.unknown { background: var(--text3); }
-.card .card-score { font-size: 10px; color: var(--yellow); }
+.card .card-footer { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
+.card .card-score { font-size: 10px; color: var(--yellow); flex-shrink: 0; }
+.card .card-updated { font-size: 9px; color: var(--text3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .continue-link { font-size: 10px; color: var(--accent2); }
 .continue-link:hover { text-decoration: underline; }
 
@@ -154,6 +175,20 @@ button { cursor: pointer; border: none; font-family: inherit; }
 #detail-box .dm-link { font-size: 11px; color: var(--accent2); margin-top: 6px; display: inline-block; }
 #detail-box .dm-link:hover { text-decoration: underline; }
 #detail-box .dm-progress-line { font-size: 12px; color: var(--text2); margin-top: 8px; }
+.blocked-badge {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 11px; color: var(--red); background: rgba(239,68,68,0.12);
+  border: 1px solid rgba(239,68,68,0.4); border-radius: 6px;
+  padding: 4px 8px; margin-top: 8px;
+}
+.card .blocked-badge { margin-top: auto; font-size: 10px; padding: 3px 6px; }
+.stale-badge {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 11px; color: var(--blue); background: rgba(96,165,250,.12);
+  border: 1px solid rgba(96,165,250,.35); border-radius: 6px;
+  padding: 4px 8px; margin-top: 8px;
+}
+.card .stale-badge { margin-top: 4px; font-size: 9px; padding: 2px 6px; width: fit-content; }
 .dm-field { margin-bottom: 12px; }
 .dm-field label { display: block; font-size: 10px; color: var(--text3); margin-bottom: 4px; }
 .dm-field textarea, .dm-field input[type="text"] {
@@ -225,6 +260,14 @@ button { cursor: pointer; border: none; font-family: inherit; }
 <div id="filter-bar">
   <input id="search-box" type="text" placeholder="搜尋漫畫名稱/作者…" oninput="applyFilters()">
   <div class="filter-sep"></div>
+  <select id="sort-select" onchange="state.sortBy = this.value; applyFilters();" title="排序方式">
+    <option value="default">🕐 觀看順序（預設）</option>
+    <option value="date_desc">📅 最新更新（新→舊）</option>
+    <option value="score_desc">⭐ 個人評分（高→低）</option>
+    <option value="behind_desc">📚 落後進度（多→少）</option>
+  </select>
+  <button class="filt-btn" id="sort-reverse-btn" onclick="toggleSortReverse()" title="切換成倒序">↓ 正序</button>
+  <div class="filter-sep"></div>
   <div class="filter-group" id="score-filters"></div>
   <div class="filter-sep"></div>
   <div class="filter-group" id="status-filters">
@@ -232,6 +275,12 @@ button { cursor: pointer; border: none; font-family: inherit; }
     <button class="filt-btn on" id="status-btn-behind" onclick="toggleShowStatus('behind')" title="還有新章節沒看">🟡 落後進度</button>
     <button class="filt-btn on" id="status-btn-unknown" onclick="toggleShowStatus('unknown')" title="無法判斷進度（例如章節解析失敗，或用卷/特典等非數字單位）">⚪ 無法判斷</button>
   </div>
+  <div class="filter-sep"></div>
+  <button class="filt-btn" id="priority-finish-btn" onclick="togglePriorityFinish()" title="只顯示已完結、但你還沒看完的漫畫——已經完結不用等更新，適合優先補完">🎯 優先補完</button>
+  <button class="filt-btn" id="link-stale-btn" onclick="toggleLinkStaleMode()" title="網頁版舊連結已失效，但確認作品本身還存在（例如在APP版找得到，或已改名/搬遷）——不是真的下架">🔗 連結待更新</button>
+  <button class="filt-btn" id="want-to-read-btn" onclick="toggleWantToReadMode()" title="只顯示已按下想看愛心的漫畫">💛 想看</button>
+  <div class="filter-sep" id="block-reason-sep"></div>
+  <div class="filter-group" id="block-reason-filters"></div>
   <span id="result-count"></span>
 </div>
 
@@ -254,6 +303,8 @@ button { cursor: pointer; border: none; font-family: inherit; }
         <div class="dm-title" id="dm-title"></div>
         <div class="dm-author" id="dm-author"></div>
         <a class="dm-link" id="dm-link" target="_blank" rel="noopener">在 manhuaren 開啟 ↗</a>
+        <div class="blocked-badge" id="dm-blocked-badge" style="display:none"></div>
+        <div class="stale-badge" id="dm-stale-badge" style="display:none"></div>
         <div class="dm-progress-line" id="dm-progress-line"></div>
       </div>
     </div>
@@ -289,7 +340,94 @@ const state = {
   search: '',
   showScores: { 10:true, 9:true, 8:true, 7:true, 6:true, 5:true, 4:true, 3:true, 2:true, 1:true, none:true },
   showStatuses: { caught_up: true, behind: true, unknown: true },
+  activeBlockReasons: new Set(), // 空集合＝正常顯示全部；選了任何一個＝只顯示對應原因被屏蔽的漫畫，方便自行複查
+  sortBy: 'default', // 2026-08-16新增：'default'＝觀看順序（不排序，維持data陣列原本順序，也就是使用者最在意的「觀看先後」）
+  sortReverse: false, // 倒序開關，套用在sortBy選到的任何一種排序上（包括default，可以反過來看「最早看的排最前面」）
+  priorityFinishMode: false, // 「優先補完」快速篩選：只顯示已完結、但還沒看完的漫畫（不用擔心追更等待）
+  linkStaleMode: false, // 「連結待更新」快速篩選：只顯示link_stale=true的漫畫（網頁版舊連結失效但確認作品仍存在，不是真的下架）
+  wantToReadMode: false, // 「想看」快速篩選：只顯示want_to_read=true（已按下愛心）的漫畫
 };
+
+// 2026-08-16新增：屏蔽原因分類，跟 process_all.py 的 check_blocked() 三種樣板文字對應
+// （見 CLAUDE.md/MANGA_SCRAPER_GUIDE.md），用「包含關鍵字」而不是完全比對字串，
+// 因為手動查證過的幾筆在原因文字後面多了「，2026-08-16透過登入帳號確認」這種
+// 後綴，完全比對會漏掉這幾筆
+const BLOCK_REASON_CATEGORIES = [
+  { key: 'rating',    match: r => r.includes('內容分級限制'), label: '🔞 內容分級限制' },
+  { key: 'copyright', match: r => r.includes('版權方要求下架'), label: '©️ 版權下架' },
+  { key: 'not_found', match: r => r.includes('頁面不存在'), label: '❓ 頁面不存在' },
+];
+
+function blockReasonKey(reason) {
+  if (!reason) return null;
+  const found = BLOCK_REASON_CATEGORIES.find(c => c.match(reason));
+  return found ? found.key : 'other';
+}
+
+// ─── Sort（2026-08-16新增）───────────────────────────────────────────────
+// 使用者最在意的是「觀看先後」，這就是 data 陣列本來的順序（來自觀看歷史頁面
+// 本身的排序，見 CLAUDE.md 第19節），所以 'default' 完全不排序、直接沿用
+// filterData() 篩選後的順序，不是額外算出來的排序邏輯。
+function extractNum(s) {
+  if (!s) return null;
+  const m = String(s).match(/(\d+(?:\.\d+)?)/);
+  return m ? parseFloat(m[1]) : null;
+}
+
+// 落後幅度＝最新章節數字－已讀章節數字，只有兩者都能解析成數字時才算得出來
+// （例如用卷/特典等非數字單位、或還沒讀過就算不出來，回傳null）。
+// sortData()的behind_desc排序、以及統計摘要小卡的「落後總話數」都共用這個函式，
+// 避免同一個算法兩邊各寫一份、以後改一邊忘記改另一邊。
+function chapterGap(e) {
+  const ln = extractNum(e.latest_progress), rn = extractNum(e.read_progress);
+  return (ln == null || rn == null) ? null : ln - rn;
+}
+
+function sortData(list) {
+  // dir 只套用在「有實際比較意義」的部分，缺值（沒有日期/評分/算不出落後幅度）
+  // 永遠排在最後，不會因為倒序就跑到最前面——這是使用者體驗上比較合理的慣例，
+  // 倒序反映的是「同樣有資料的項目之間，順序要不要顛倒」，不是「把不知道的
+  // 也當作最大值」。
+  const dir = state.sortReverse ? -1 : 1;
+  if (state.sortBy === 'date_desc') {
+    list.sort((a, b) => {
+      if (!a.latest_update_date && !b.latest_update_date) return 0;
+      if (!a.latest_update_date) return 1;
+      if (!b.latest_update_date) return -1;
+      return dir * b.latest_update_date.localeCompare(a.latest_update_date);
+    });
+  } else if (state.sortBy === 'score_desc') {
+    list.sort((a, b) => {
+      if (a.score == null && b.score == null) return 0;
+      if (a.score == null) return 1;
+      if (b.score == null) return -1;
+      return dir * (b.score - a.score);
+    });
+  } else if (state.sortBy === 'behind_desc') {
+    // 算不出來的（例如用卷/特典等非數字單位、或還沒讀過）排到最後，不強行排序
+    list.sort((a, b) => {
+      const ga = chapterGap(a), gb = chapterGap(b);
+      if (ga == null && gb == null) return 0;
+      if (ga == null) return 1;
+      if (gb == null) return -1;
+      return dir * (gb - ga);
+    });
+  } else if (state.sortReverse) {
+    // 'default'（觀看順序）本身沒有比較函式，倒序就是單純把陣列整個反過來，
+    // 變成「最早看的排最前面」
+    list.reverse();
+  }
+  return list;
+}
+
+function toggleSortReverse() {
+  state.sortReverse = !state.sortReverse;
+  const btn = document.getElementById('sort-reverse-btn');
+  btn.textContent = state.sortReverse ? '↑ 倒序' : '↓ 正序';
+  btn.classList.toggle('on', state.sortReverse);
+  applyFilters();
+}
+
 let _dmCurrentTitle = null;
 
 function escHtml(s) {
@@ -300,9 +438,66 @@ function statusLabel(status) {
   return { caught_up: '🟢 追上進度', behind: '🟡 落後進度', unknown: '⚪ 無法判斷' }[status] || '';
 }
 
+// 把 latest_update_date（YYYY-MM-DD）換算成「幾天前」這種相對時間，方便一眼判斷新舊，
+// 完整日期保留在呼叫端用 title 屬性當 hover 提示，不會遺失精確資訊
+function formatRelativeDate(dateStr) {
+  if (!dateStr) return null;
+  const d = new Date(dateStr + 'T00:00:00');
+  if (isNaN(d.getTime())) return dateStr;
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const diffDays = Math.round((today - d) / 86400000);
+  if (diffDays < 0) return dateStr;
+  if (diffDays === 0) return '今天';
+  if (diffDays === 1) return '昨天';
+  if (diffDays === 2) return '前天';
+  if (diffDays < 30) return `${diffDays}天前`;
+  if (diffDays < 365) return `${Math.round(diffDays / 30)}個月前`;
+  return `${Math.round(diffDays / 365)}年前`;
+}
+
 // ─── Filter ──────────────────────────────────────────────────────────────
 function filterData() {
   const q = state.search.toLowerCase();
+  // 有勾選任何「屏蔽原因」按鈕時，切換成複查模式：只顯示符合選中原因的已屏蔽
+  // 漫畫，忽略評分/進度狀態篩選（被屏蔽的漫畫這兩項通常沒有意義），但搜尋框
+  // 還是有效，方便在複查清單裡找特定標題
+  if (state.activeBlockReasons.size > 0) {
+    return data.filter(e => {
+      if (!e.blocked) return false;
+      if (!state.activeBlockReasons.has(blockReasonKey(e.blocked_reason))) return false;
+      if (q && !e.title.toLowerCase().includes(q) && !(e.author || '').toLowerCase().includes(q)) return false;
+      return true;
+    });
+  }
+  // 「優先補完」模式：只顯示已完結（不用等更新、沒有追更斷更風險）、
+  // 但閱讀進度還落後的漫畫，忽略評分/狀態篩選（意義不大，這裡本來就只挑behind的），
+  // 搜尋框仍然有效
+  if (state.priorityFinishMode) {
+    return data.filter(e => {
+      if (e.serialization_status !== '已完结' || e.progress_status !== 'behind') return false;
+      if (q && !e.title.toLowerCase().includes(q) && !(e.author || '').toLowerCase().includes(q)) return false;
+      return true;
+    });
+  }
+  // 「連結待更新」模式：只顯示link_stale=true的漫畫（網頁版舊連結失效但已
+  // 確認作品仍存在），忽略評分/狀態篩選，搜尋框仍然有效
+  if (state.linkStaleMode) {
+    return data.filter(e => {
+      if (!e.link_stale) return false;
+      if (q && !e.title.toLowerCase().includes(q) && !(e.author || '').toLowerCase().includes(q)) return false;
+      return true;
+    });
+  }
+  // 「想看」模式：只顯示已按下愛心(want_to_read=true)的漫畫，忽略評分/狀態
+  // 篩選，搜尋框仍然有效
+  if (state.wantToReadMode) {
+    return data.filter(e => {
+      if (!e.want_to_read) return false;
+      if (q && !e.title.toLowerCase().includes(q) && !(e.author || '').toLowerCase().includes(q)) return false;
+      return true;
+    });
+  }
   return data.filter(e => {
     if (q && !e.title.toLowerCase().includes(q) && !(e.author || '').toLowerCase().includes(q)) return false;
     const scoreKey = e.score ? Math.round(e.score) : 'none';
@@ -310,6 +505,24 @@ function filterData() {
     if (!state.showStatuses[e.progress_status]) return false;
     return true;
   });
+}
+
+function togglePriorityFinish() {
+  state.priorityFinishMode = !state.priorityFinishMode;
+  document.getElementById('priority-finish-btn').classList.toggle('on', state.priorityFinishMode);
+  applyFilters();
+}
+
+function toggleLinkStaleMode() {
+  state.linkStaleMode = !state.linkStaleMode;
+  document.getElementById('link-stale-btn').classList.toggle('on', state.linkStaleMode);
+  applyFilters();
+}
+
+function toggleWantToReadMode() {
+  state.wantToReadMode = !state.wantToReadMode;
+  document.getElementById('want-to-read-btn').classList.toggle('on', state.wantToReadMode);
+  applyFilters();
 }
 
 function toggleShowScore(key) {
@@ -345,31 +558,120 @@ function initScoreBar() {
   bar.appendChild(noneBtn);
 }
 
+function toggleBlockReason(key) {
+  if (state.activeBlockReasons.has(key)) state.activeBlockReasons.delete(key);
+  else state.activeBlockReasons.add(key);
+  document.getElementById(`block-reason-btn-${key}`).classList.toggle('on', state.activeBlockReasons.has(key));
+  applyFilters();
+}
+
+function initBlockReasonBar() {
+  // 動態掃描目前資料庫裡實際有出現的屏蔽原因分類，「有幾種就顯示幾顆按鈕」，
+  // 不是寫死固定顆數——之後如果 check_blocked() 又新增偵測到的分類，這裡
+  // 會自動反映，不用回來改前端
+  const bar = document.getElementById('block-reason-filters');
+  bar.innerHTML = '';
+  const counts = {};
+  data.forEach(e => {
+    if (!e.blocked) return;
+    const key = blockReasonKey(e.blocked_reason);
+    counts[key] = (counts[key] || 0) + 1;
+  });
+  const allCats = [...BLOCK_REASON_CATEGORIES, { key: 'other', label: '❔ 其他原因' }];
+  allCats.forEach(cat => {
+    const count = counts[cat.key];
+    if (!count) return;
+    const btn = document.createElement('button');
+    btn.className = 'filt-btn';
+    btn.id = `block-reason-btn-${cat.key}`;
+    btn.title = `只顯示因為此原因被屏蔽的漫畫，方便自行複查是否真的被屏蔽`;
+    btn.textContent = `${cat.label} (${count})`;
+    btn.onclick = () => toggleBlockReason(cat.key);
+    bar.appendChild(btn);
+  });
+  document.getElementById('block-reason-sep').style.display = bar.children.length ? '' : 'none';
+}
+
 function applyFilters() {
   state.search = document.getElementById('search-box').value;
-  renderContent(filterData());
+  renderContent(sortData(filterData()));
 }
 
 // ─── Render ──────────────────────────────────────────────────────────────
 function renderCard(e) {
+  // 最新章節（latest_progress）不管閱讀進度有沒有解析出來都要顯示——這個資訊在
+  // 列表/詳情頁上本來就看得到，不需要點進任何一話就能確認，不能因為
+  // read_progress_url 沒解析成功就整個藏起來，只留一個看不出進度的連結
   const progressLine = e.read_progress_url
-    ? `<a class="continue-link" href="${escHtml(e.read_progress_url)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">繼續閱讀 ↗</a>`
+    ? `<span>最新：${escHtml(e.latest_progress)}</span> · <a class="continue-link" href="${escHtml(e.read_progress_url)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">繼續閱讀 ↗</a>`
     : `<span>${e.read_progress ? escHtml(e.read_progress) : '尚未記錄'} / ${escHtml(e.latest_progress)}</span>`;
-  return `<div class="card" onclick="openDetailModal('${escHtml(e.title).replace(/'/g,"\\'")}')">
-    <div class="cover-wrap">${e.cover_path ? `<img src="${escHtml(e.cover_path)}" loading="lazy" onerror="this.style.visibility='hidden'">` : ''}</div>
+  // 被屏蔽/下架的漫畫不顯示一般的進度列（那份資料本來就抓不到、顯示出來
+  // 只會是空的或誤導），改成一個醒目的紅色徽章＋簡短原因，讓使用者不用
+  // 點開詳情視窗就能一眼看出這部漫畫已經讀不到了
+  const progressBlock = e.blocked
+    ? `<div class="blocked-badge">🚫 ${escHtml(e.blocked_reason || '已屏蔽/下架')}</div>`
+    : `<div class="card-progress"><span class="status-dot ${e.progress_status}"></span>${progressLine}</div>`;
+  const tq = escHtml(e.title).replace(/'/g, "\\'");
+  const heartId = 'heart-' + e.title.replace(/['"<>&]/g, '_');
+  const heartHtml = `<button class="heart-btn${e.want_to_read ? ' active' : ''}" id="${heartId}" onclick="toggleWantToRead(event,'${tq}')" title="想看">${e.want_to_read ? '💛' : '🤍'}</button>`;
+  const updatedHtml = e.latest_update_date
+    ? `<span class="card-updated" title="最新更新：${escHtml(e.latest_update_date)}">🕐 ${escHtml(formatRelativeDate(e.latest_update_date))}</span>`
+    : '';
+  // 跟「已下架」(blocked)不同：這是網頁版舊連結失效、但已確認作品本身還存在
+  // （例如在APP版找得到，或已改名/搬遷）的獨立分類，不影響原本的進度顯示，
+  // 只是額外加一個提示徽章
+  const staleHtml = e.link_stale
+    ? `<div class="stale-badge" title="${escHtml(e.link_stale_note || '網頁版舊連結已失效，但確認作品仍存在')}">🔗 連結待更新</div>`
+    : '';
+  return `<div class="card${e.want_to_read ? ' want-to-read' : ''}" onclick="openDetailModal('${tq}')">
+    <div class="cover-wrap">${e.cover_path ? `<img src="${escHtml(e.cover_path)}" loading="lazy" onerror="this.style.visibility='hidden'">` : ''}${heartHtml}</div>
     <div class="card-body">
       <div class="card-title">${escHtml(e.title)}</div>
       <div class="card-author">${escHtml(e.author || '作者不詳')}</div>
-      <div class="card-progress"><span class="status-dot ${e.progress_status}"></span>${progressLine}</div>
-      <div class="card-score">${e.score ? '★'.repeat(Math.round(e.score)) + ' ' + e.score : '未評分'}</div>
+      ${progressBlock}
+      ${staleHtml}
+      <div class="card-footer">
+        <span class="card-score">${e.score ? '★'.repeat(Math.round(e.score)) + ' ' + e.score : '未評分'}</span>
+        ${updatedHtml}
+      </div>
     </div>
   </div>`;
+}
+
+async function toggleWantToRead(event, title) {
+  event.stopPropagation();
+  const e = data.find(x => x.title === title);
+  if (!e) return;
+  const next = !e.want_to_read;
+  try {
+    const res = await fetch('http://localhost:3737/api/manga/save-want-to-read', {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ title, want: next })
+    });
+    const j = await res.json();
+    if (!j.ok) { alert('儲存失敗：' + (j.error || '未知錯誤')); return; }
+  } catch { alert('無法連線到伺服器，請確認 動畫/server.py 已啟動（漫畫頁面共用同一個伺服器）。'); return; }
+  e.want_to_read = next;
+  const safeId = title.replace(/['"<>&]/g, '_');
+  const btn = document.getElementById('heart-' + safeId);
+  if (btn) { btn.textContent = next ? '💛' : '🤍'; btn.classList.toggle('active', next); }
+  const card = btn?.closest('.card');
+  if (card) card.classList.toggle('want-to-read', next);
 }
 
 function renderContent(filtered) {
   const grid = document.getElementById('cards-grid');
   const empty = document.getElementById('empty-state');
-  document.getElementById('result-count').textContent = `顯示 ${filtered.length} / ${data.length} 部`;
+  const denom = state.activeBlockReasons.size > 0
+    ? data.filter(e => e.blocked).length
+    : state.priorityFinishMode
+      ? data.filter(e => e.serialization_status === '已完结' && e.progress_status === 'behind').length
+      : state.linkStaleMode
+        ? data.filter(e => e.link_stale).length
+        : state.wantToReadMode
+          ? data.filter(e => e.want_to_read).length
+          : data.length;
+  document.getElementById('result-count').textContent = `顯示 ${filtered.length} / ${denom} 部`;
   if (!filtered.length) {
     grid.innerHTML = '';
     empty.style.display = 'block';
@@ -471,8 +773,27 @@ function openDetailModal(title) {
   document.getElementById('dm-title').textContent = e.title;
   document.getElementById('dm-author').textContent = e.author || '作者不詳';
   document.getElementById('dm-link').href = e.url;
+  const blockedBadge = document.getElementById('dm-blocked-badge');
+  if (e.blocked) {
+    blockedBadge.style.display = 'inline-flex';
+    blockedBadge.textContent = `🚫 ${e.blocked_reason || '已從漫畫人屏蔽/下架'}`;
+  } else {
+    blockedBadge.style.display = 'none';
+  }
+  const staleBadge = document.getElementById('dm-stale-badge');
+  if (e.link_stale) {
+    staleBadge.style.display = 'inline-flex';
+    staleBadge.textContent = `🔗 網頁版舊連結已失效，但確認作品仍存在${e.link_stale_note ? '：' + e.link_stale_note : ''}`;
+  } else {
+    staleBadge.style.display = 'none';
+  }
+  const extraInfo = [
+    e.serialization_status ? `連載狀態：${escHtml(e.serialization_status)}` : '',
+    e.latest_update_date ? `最新更新：<span title="${escHtml(e.latest_update_date)}">${escHtml(formatRelativeDate(e.latest_update_date))}</span>` : '',
+  ].filter(Boolean).join('　');
   document.getElementById('dm-progress-line').innerHTML =
-    `${statusLabel(e.progress_status)}　最新：${escHtml(e.latest_progress)}　已讀：${e.read_progress ? escHtml(e.read_progress) : (e.read_progress_url ? `<a class="continue-link" href="${escHtml(e.read_progress_url)}" target="_blank" rel="noopener">繼續閱讀連結 ↗</a>` : '尚未記錄')}`;
+    `${statusLabel(e.progress_status)}　最新：${escHtml(e.latest_progress)}　已讀：${e.read_progress ? escHtml(e.read_progress) : (e.read_progress_url ? `<a class="continue-link" href="${escHtml(e.read_progress_url)}" target="_blank" rel="noopener">繼續閱讀連結 ↗</a>` : '尚未記錄')}`
+    + (extraInfo ? `<br>${extraInfo}` : '');
   document.getElementById('dm-synopsis').textContent = e.synopsis || '（無簡介）';
   document.getElementById('dm-comment').value = e.comment || '';
   document.getElementById('dm-progress-input').value = '';
@@ -568,6 +889,7 @@ loadAnimeCount();
 loadGameCount();
 loadLastUpdated();
 initScoreBar();
+initBlockReasonBar();
 applyFilters();
 </script>
 </body>
