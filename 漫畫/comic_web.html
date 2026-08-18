@@ -125,6 +125,11 @@ button { cursor: pointer; border: none; font-family: inherit; }
 .card:hover { border-color: var(--accent); }
 .card.want-to-read { border-color: var(--yellow); box-shadow: 0 0 0 1px var(--yellow), 0 4px 16px rgba(245,158,11,.2); }
 .card.want-to-read:hover { box-shadow: 0 0 0 1px var(--yellow), 0 6px 24px rgba(245,158,11,.35); }
+@keyframes card-flash-pulse {
+  0%, 100% { box-shadow: 0 0 0 2px var(--red), 0 0 14px 3px rgba(239,68,68,.55); }
+  50%      { box-shadow: 0 0 0 2px var(--red), 0 0 26px 8px rgba(239,68,68,.9); }
+}
+.card.flash-target { animation: card-flash-pulse 1.1s ease-in-out infinite; border-color: var(--red); }
 .card .cover-wrap { width: 100%; aspect-ratio: 3/4; background: var(--bg3); overflow: hidden; position: relative; }
 .card .cover-wrap img { width: 100%; height: 100%; object-fit: contain; display: block; }
 .heart-btn {
@@ -245,6 +250,7 @@ button { cursor: pointer; border: none; font-family: inherit; }
     <span id="last-updated" ondblclick="startEditLastUpdated()" title="雙擊可編輯"></span>
   </div>
   <div id="nav-tabs">
+    <button class="nav-tab" onclick="window.location.href='../index.html'">首頁</button>
     <button class="nav-tab" onclick="window.location.href='../動畫/anime_web.html'">
       動畫 <span class="tab-count" id="anime-count"></span>
     </button>
@@ -623,7 +629,7 @@ function renderCard(e) {
   const staleHtml = e.link_stale
     ? `<div class="stale-badge" title="${escHtml(e.link_stale_note || '網頁版舊連結已失效，但確認作品仍存在')}">🔗 連結待更新</div>`
     : '';
-  return `<div class="card${e.want_to_read ? ' want-to-read' : ''}" onclick="openDetailModal('${tq}')">
+  return `<div class="card${e.want_to_read ? ' want-to-read' : ''}" data-title="${escHtml(e.title)}" onclick="openDetailModal('${tq}')">
     <div class="cover-wrap">${e.cover_path ? `<img src="${escHtml(e.cover_path)}" loading="lazy" onerror="this.style.visibility='hidden'">` : ''}${heartHtml}</div>
     <div class="card-body">
       <div class="card-title">${escHtml(e.title)}</div>
@@ -768,6 +774,9 @@ async function saveLastUpdated() {
 function openDetailModal(title) {
   const e = data.find(x => x.title === title);
   if (!e) return;
+  // 點開任何一張卡片的詳情，就清除目前正在閃爍的跳轉目標（不限定是不是剛好點到
+  // 被跳轉的那張），比照動畫頁面既有的「開了詳情視窗就代表使用者已經找到它了」邏輯
+  document.querySelectorAll('.card.flash-target').forEach(c => c.classList.remove('flash-target'));
   _dmCurrentTitle = title;
   document.getElementById('dm-cover').src = e.cover_path || '';
   document.getElementById('dm-title').textContent = e.title;
@@ -891,6 +900,69 @@ loadLastUpdated();
 initScoreBar();
 initBlockReasonBar();
 applyFilters();
+
+// 從首頁儀表板點進來的深連結（?jump=標題）：捲到該卡片並閃爍。跟動畫頁不同，
+// 這裡不需要一個能撐過整頁重繪的 module-level 旗標——jump只會發生在剛載入頁面
+// 那一刻，之後不會有任何自動重繪把這個 class 洗掉，直接找DOM節點加class即可，
+// 不用像動畫頁的 _flashTitle 那樣費心處理 TDZ／要在 renderCard() 樣板裡烘進判斷式
+// 自訂的「追蹤式」捲動動畫，寫法跟 動畫/anime_web.html 的 _chaseScrollTo 完全一致
+// （每幀重新計算目標卡片座標、指數趨近，確保真的收斂在卡片可視範圍內才算完成，
+// 不是元素存在於DOM就好），這頁雖然沒有 content-visibility 的問題，但同樣要讓
+// 使用者「看得到」捲動過程，而且要有明確的「動畫真正停下來」時機點可以掛
+// onSettled callback，原生 scrollIntoView({behavior:'smooth'}) 沒有可靠的
+// 完成事件可以拿來確定「現在真的停了」
+function _chaseScrollTo(container, card, onSettled) {
+  const EPSILON = 1, EASE = 0.15, MAX_FRAMES = 420;
+  let frame = 0, done = false;
+  function finish(finalTop) {
+    if (done) return;
+    done = true;
+    if (finalTop != null) container.scrollTop = finalTop;
+    if (onSettled) onSettled();
+  }
+  function computeTarget() {
+    const cRect = container.getBoundingClientRect();
+    const eRect = card.getBoundingClientRect();
+    const relTop = eRect.top - cRect.top + container.scrollTop;
+    const raw = relTop - (cRect.height - eRect.height) / 2;
+    const maxScroll = container.scrollHeight - container.clientHeight;
+    return Math.max(0, Math.min(raw, maxScroll));
+  }
+  function step() {
+    if (done) return;
+    frame++;
+    const target = computeTarget();
+    const cur = container.scrollTop;
+    const delta = target - cur;
+    if (Math.abs(delta) < EPSILON || frame > MAX_FRAMES) {
+      finish(target);
+      return;
+    }
+    container.scrollTop = cur + delta * EASE;
+    requestAnimationFrame(step);
+  }
+  requestAnimationFrame(step);
+  // 安全網：分頁不在前景時rAF可能被嚴重節流，用setTimeout保底，見
+  // 動畫/anime_web.html 的 _chaseScrollTo 同一處註解
+  setTimeout(() => finish(computeTarget()), 3000);
+}
+
+function _scrollAndFlashTitle(title, onSettled) {
+  const card = document.querySelector(`.card[data-title="${CSS.escape(title)}"]`);
+  if (!card) { if (onSettled) onSettled(); return; }
+  card.classList.add('flash-target');
+  _chaseScrollTo(document.getElementById('content'), card, onSettled);
+}
+(function handleJumpParam() {
+  const jumpTitle = new URLSearchParams(location.search).get('jump');
+  if (jumpTitle && data.some(e => e.title === jumpTitle)) {
+    // 動畫真正停下來（onSettled）才開始算1秒，不是捲動指令一發出就倒數——避免
+    // 長距離捲動還在滑，詳情視窗就提早跳出來蓋住畫面
+    _scrollAndFlashTitle(jumpTitle, () => {
+      setTimeout(() => openDetailModal(jumpTitle), 1000);
+    });
+  }
+})();
 </script>
 </body>
 </html>

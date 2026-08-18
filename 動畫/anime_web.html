@@ -5,7 +5,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>我的紀錄</title>
-<script src="data.js?v=1786807058"></script>
+<script src="data.js?v=1787020704"></script>
 <style>
 /* ─── Reset & Base ─────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -1330,6 +1330,7 @@ button { cursor: pointer; border: none; font-family: inherit; }
       <span id="last-updated" ondblclick="startEditLastUpdated()" title="雙擊可編輯"></span>
 </div>
     <div id="nav-tabs">
+      <button class="nav-tab" onclick="window.location.href='../index.html'">首頁</button>
       <button class="nav-tab active">
         動畫 <span class="tab-count" id="anime-count">0</span>
       </button>
@@ -1951,6 +1952,7 @@ function closeNewsModal() {
 
 // ─── 新增動畫：查證正確性＋抓取資料（見 CLAUDE.md 第18節④）───────────────────
 let _afPicked = null;  // 目前選定的 bgm 候選詳細資料（/api/bgm-detail 回傳內容）
+let _afUpdateCandidate = null;  // 撞到重複bgm_id時暫存的詳細資料，供「更新」按鈕使用
 
 function openAnimeModal() {
   ['af-title','af-year','af-month','af-watched','af-total','af-score','af-comment','af-aliases'].forEach(id => {
@@ -1964,6 +1966,7 @@ function openAnimeModal() {
   document.getElementById('af-submit-btn').style.display = 'none';
   document.getElementById('af-search-btn').disabled = false;
   _afPicked = null;
+  _afUpdateCandidate = null;
   document.getElementById('anime-modal').classList.add('open');
   setTimeout(() => document.getElementById('af-title').focus(), 50);
 }
@@ -2026,15 +2029,47 @@ async function pickBgmCandidate(bgmId) {
     candEl.innerHTML = '';
     const warnEl = document.getElementById('af-warning');
     if (j.existing_title) {
+      const existingForPrefill = data.find(e => e.title === j.existing_title);
+      // 年/季/月預填優先序：bgm這次查到的日期 > 條目目前既有的值 > 空白，
+      // 使用者可以直接看著改，不是強制套用bgm資料（見 updateExistingFromBgm() 說明）
+      const prefYear  = j.year  ?? existingForPrefill?.year  ?? '';
+      const prefSeason = j.season ?? existingForPrefill?.season ?? '';
+      const prefMonth = j.month ?? existingForPrefill?.month ?? '';
       warnEl.style.display = 'block';
-      warnEl.textContent = `⚠️ 這個 bgm 條目已經被資料庫裡的「${j.existing_title}」使用了，無法重複新增，請確認是不是同一部作品。`;
+      warnEl.innerHTML = `⚠️ 這個 bgm 條目已經被資料庫裡的「${escHtml(j.existing_title)}」使用了，無法重複新增，請確認是不是同一部作品。
+        <div style="margin-top:10px" class="anime-form-row">
+          <div class="news-field" style="flex:1">
+            <label>年份</label>
+            <input id="afu-year" type="number" placeholder="不確定就留空" min="1990" max="2099" value="${escHtml(String(prefYear))}">
+          </div>
+          <div class="news-field" style="flex:1">
+            <label>季節</label>
+            <select id="afu-season" class="af-select">
+              <option value=""${prefSeason === '' ? ' selected' : ''}>不指定</option>
+              <option value="春"${prefSeason === '春' ? ' selected' : ''}>春</option>
+              <option value="夏"${prefSeason === '夏' ? ' selected' : ''}>夏</option>
+              <option value="秋"${prefSeason === '秋' ? ' selected' : ''}>秋</option>
+              <option value="冬"${prefSeason === '冬' ? ' selected' : ''}>冬</option>
+            </select>
+          </div>
+          <div class="news-field" style="flex:1">
+            <label>月份</label>
+            <input id="afu-month" type="number" placeholder="不確定就留空" min="1" max="12" value="${escHtml(String(prefMonth))}">
+          </div>
+        </div>
+        <div style="font-size:11px;color:var(--text3);margin:2px 0 8px">年份留空＝不調整年季月／不動「預告」標記；填了年份就會把這部從預告區移出、套用你填的日期。</div>
+        <div>
+          <button class="news-submit" style="font-size:12px;padding:6px 12px" onclick="updateExistingFromBgm()">🔄 更新「${escHtml(j.existing_title)}」的資料（封面／評分／集數／簡介／年季月）</button>
+        </div>`;
       document.getElementById('af-detail-form').style.display = 'none';
       document.getElementById('af-submit-btn').style.display = 'none';
       _afPicked = null;
+      _afUpdateCandidate = j;
       return;
     }
     warnEl.style.display = 'none';
     _afPicked = j;
+    _afUpdateCandidate = null;
     fillAfDetailForm(j);
   } catch {
     alert('無法連線到伺服器，請確認 server.py 已啟動。');
@@ -2122,6 +2157,87 @@ async function submitAnimeVerified() {
     data.push(entry);
     updateHeaderStats();
     applyFilters();
+  } catch { alert('無法連線到伺服器，請確認 server.py 已啟動。'); }
+}
+
+// 「+新增動畫」撞到bgm_id重複時的「更新」按鈕：不是新增一筆，而是把資料庫裡
+// 已存在的那筆（j.existing_title）重新套用最新的bgm機械式事實資料（分數/集數/
+// 簡介/正式名稱/封面），解決「當初新增之後bgm.tv上的資料換了，本機一直沒同步」
+// 的問題。範圍嚴格限定在bgm_*欄位，完全不碰score/comment/progress_watched/
+// user_tags/tags/aliases/info/年季月這些使用者資料或需要人工查證的欄位，
+// 遵照 CLAUDE.md 「絕對不要覆蓋既有真實資料」的既有原則。
+async function updateExistingFromBgm() {
+  if (!_afUpdateCandidate) return;
+  const j = _afUpdateCandidate;
+  const existing = data.find(e => e.title === j.existing_title);
+  if (!existing) { alert('在目前頁面的資料裡找不到這個標題，請重新整理頁面後再試一次。'); return; }
+
+  // 只列出「新資料真的有內容、且跟現有值不同」的欄位——bgm還沒公布的空值/0
+  // 不該拿來洗掉舊的既有資料，所以這裡的判斷跟後端 diff_apply() 的邏輯保持一致，
+  // 對話框顯示的內容才會跟實際套用的結果一致，不會出現「說要覆蓋成空白」這種誤導。
+  // ⚠️ 日文名/中文名（bgm_name/bgm_name_cn）不在這裡比對——這兩個欄位只存在於
+  // bangumi_metadata.json/metadata.json，data.js 沒有帶到前端（見 rebuild_datajs()
+  // 合併進 data.js 的欄位清單），前端沒有「目前值」可以比較，硬要比只會永遠顯示
+  // 「不同」（undefined !== 任何字串），改成不主動宣稱會不會變，只在下面統一提醒
+  const trunc = s => (s || '').slice(0, 60) + ((s || '').length > 60 ? '…' : '');
+  const lines = [`確定要用 bgm.tv 最新資料更新「${existing.title}」嗎？`, ''];
+  const willChange = [];
+  if (j.score && existing.bgm_score !== j.score) willChange.push(`bgm評分：${existing.bgm_score ?? '無'} → ${j.score}`);
+  if (j.eps && existing.episodes !== j.eps) willChange.push(`集數：${existing.episodes ?? '無'} → ${j.eps}`);
+  const synopsisChanges = j.summary && (existing.synopsis || '') !== j.summary;
+
+  // 年/季/月：只有使用者在表單裡填了年份才處理，空白代表「這次不調整」，
+  // 完全比照 updateExistingFromBgm() 送出前該做的事，跟後端 diff_apply 的判斷一致
+  const yearInput = document.getElementById('afu-year')?.value.trim() || '';
+  const seasonInput = document.getElementById('afu-season')?.value || '';
+  const monthInput = document.getElementById('afu-month')?.value.trim() || '';
+  const dateChanges = yearInput !== '';
+  if (dateChanges) {
+    willChange.push(`年季月：${existing.year ?? '未定'}/${existing.season ?? '?'}/${existing.month ?? '?'}月 → ${yearInput}/${seasonInput || '?'}/${monthInput || '?'}月${existing.upcoming ? '（會從「預告/未定檔」移出）' : ''}`);
+  }
+
+  if (!willChange.length && !synopsisChanges) {
+    lines.push('bgm評分/集數/簡介/年季月都跟目前資料庫一致，這次點擊只會強制重新下載封面圖（以防bgm.tv換圖但本機快取沒跟著換）。');
+  } else {
+    lines.push(...willChange);
+  }
+  lines.push(`封面：一律會強制重新下載（就算網址看起來一樣，也可能是bgm.tv換了圖但檔名沒變）`);
+  lines.push(`日文/中文正式名稱：如果bgm.tv上有更新也會一併同步（實際有沒有變化以更新後的結果為準）`);
+  if (synopsisChanges) {
+    lines.push('', '⚠️ 簡介會被覆蓋：', `舊：${trunc(existing.synopsis)}`, `新：${trunc(j.summary)}`,
+      '（新簡介是bgm原文，可能是簡體或尚未潤飾成繁體百科敘述，確認前請留意）');
+  }
+  lines.push('', '不會動到你的個人評分/心得/進度/標籤/簡介以外的任何欄位。');
+  if (!confirm(lines.join('\n'))) return;
+
+  try {
+    const res = await fetch('http://localhost:3737/api/update-anime-from-bgm', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({
+        title: existing.title,
+        bgm_id: j.bgm_id,
+        bgm_score: j.score,
+        bgm_image_url: j.image,
+        bgm_episodes: j.eps,
+        bgm_synopsis: j.summary,
+        bgm_name: j.name,
+        bgm_name_cn: j.name_cn,
+        year: dateChanges ? yearInput : null,
+        season: dateChanges ? seasonInput : null,
+        month: dateChanges ? monthInput : null,
+      })
+    });
+    const resJ = await res.json();
+    if (resJ.error === 'bgm_id_mismatch') { alert('這個標題目前關聯的 bgm 條目跟選定的不是同一個，為了安全起見不會自動改連結，請確認是不是選錯候選項。'); return; }
+    if (!resJ.ok) { alert('更新失敗：' + (resJ.error || '未知錯誤')); return; }
+    closeAnimeModal();
+    const fieldLabel = { bgm_score:'bgm評分', bgm_episodes:'集數', bgm_name:'日文名', bgm_name_cn:'中文名', bgm_synopsis:'簡介', cover_image:'封面圖片' };
+    const summary = (resJ.changes || []).map(c => {
+      if (c.field === 'cover_image') return '・封面圖片已重新下載';
+      if (c.field === 'upcoming_confirmed') return `・年季月已更新為 ${c.new.year}/${c.new.season}/${c.new.month}月，已從「預告/未定檔」移出`;
+      return `・${fieldLabel[c.field] || c.field} 已更新`;
+    }).join('\n');
+    alert(`「${existing.title}」更新完成：\n${summary || '（bgm資料跟目前資料庫完全一致，沒有變化）'}\n\n重新整理頁面才會看到最新的封面/資訊（見「📋 變更紀錄」可以還原這次的變更）。`);
   } catch { alert('無法連線到伺服器，請確認 server.py 已啟動。'); }
 }
 
@@ -2677,6 +2793,13 @@ function _fmtChangeValue(field, v) {
   if (field === 'sequel_suggestion') {
     return `${v.found_name_cn || v.found_name}（bgm#${v.bgm_id}，${v.date}，${v.eps}集）`;
   }
+  if (field === 'bgm_synopsis') {
+    const s = String(v);
+    return s.length > 40 ? s.slice(0, 40) + '…' : s;
+  }
+  if (field === 'cover_image') {
+    return typeof v === 'number' || /^\d+$/.test(v) ? `bgm#${v}的封面` : '（先前的封面備份）';
+  }
   return String(v);
 }
 
@@ -3221,6 +3344,21 @@ function init() {
 
 init();
 
+// 從首頁儀表板點進來的深連結（?jump=標題）：捲到該卡片並閃爍，重用既有的
+// 「同系列」跳轉機制（_dmScrollCard），不用另外寫一套捲動/閃爍邏輯
+(function handleJumpParam() {
+  const jumpTitle = new URLSearchParams(location.search).get('jump');
+  if (jumpTitle && data.some(e => e.title === jumpTitle)) {
+    // 'chase' 讓使用者看得到真的在滑動、且會確實收斂停在卡片可視範圍內（不是元素
+    // 存在於DOM就好，見 _chaseScrollTo），動畫真正停下來後才開始算1秒、時間到才
+    // 自動開詳情視窗——不是捲動指令一發出就開始倒數（那樣長距離捲動還沒滑完，
+    // 詳情視窗就會提早跳出來蓋住還在捲動的畫面）
+    _dmScrollCard(jumpTitle, 'chase', () => {
+      setTimeout(() => openDetailModal(jumpTitle), 1000);
+    });
+  }
+})();
+
 
 // ─── Detail Modal ──────────────────────────────────────────────────────────
 
@@ -3666,15 +3804,73 @@ function _dmNavTo(title) {
   _dmScrollCard(title);
 }
 
-function _dmScrollCard(title) {
+// ⚠️ behavior 預設維持既有的 'smooth'（同系列跳轉的既有UX，通常距離不遠）。
+// 首頁儀表板的深連結是冷啟動、距離可能橫跨十幾年份的 content-visibility:auto
+// 區塊，實測 smooth 在這種長距離＋沿途大量區塊要即時揭露真實版面的情況下，
+// 捲動動畫會卡在半路不會抵達終點（瀏覽器對 smooth scroll 在目標座標隨著
+// content-visibility 揭露不斷變動時似乎會失去追蹤）。
+// behavior='chase' 是專門給首頁儀表板深連結用的第三種模式：自己控制動畫、
+// 每一幀重新計算目標卡片的真實位置（見 _chaseScrollTo），不是把目標座標算一次
+// 就交給瀏覽器原生動畫——這樣不管沿途有多少 content-visibility 區塊逐步展開、
+// 目標座標怎麼變動，都能持續收斂到正確位置，而且是使用者看得見的滑動過程
+// （不是 instant 的瞬間跳轉），animation 真正停止時才會呼叫 onSettled。
+function _dmScrollCard(title, behavior = 'smooth', onSettled) {
   const els = document.querySelectorAll('.card-title');
+  let card = null;
   for (const el of els) {
-    if (el.textContent.trim() === title) {
-      el.closest('.card')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-      break;
-    }
+    if (el.textContent.trim() === title) { card = el.closest('.card'); break; }
   }
   _setFlashTarget(title);
+  if (!card) { if (onSettled) onSettled(); return; }
+  if (behavior === 'chase') {
+    _chaseScrollTo(document.getElementById('content'), card, onSettled);
+  } else {
+    card.scrollIntoView({ behavior, block: 'nearest' });
+    if (onSettled) onSettled();
+  }
+}
+
+// 自訂的「追蹤式」捲動動畫：每一幀都重新讀取目標元素的真實座標，往當下算出來的
+// 目標前進一小段距離（指數趨近），不是一次算好終點就固定軌跡播放動畫——這樣就算
+// 沿途的 content-visibility:auto 區塊在捲動過程中才逐步展開、真實高度隨之出現，
+// 動畫也能自動跟著修正方向，最終確實收斂到正確位置，不會像原生 smooth scroll
+// 那樣卡在半路。card 置中對齊（不是貼齊頂端），確保停下來時使用者能清楚看到整張卡片。
+function _chaseScrollTo(container, card, onSettled) {
+  const EPSILON = 1, EASE = 0.15, MAX_FRAMES = 420; // 420幀≈7秒，長距離的安全上限
+  let frame = 0, done = false;
+  function finish(finalTop) {
+    if (done) return;
+    done = true;
+    if (finalTop != null) container.scrollTop = finalTop;
+    if (onSettled) onSettled();
+  }
+  function computeTarget() {
+    const cRect = container.getBoundingClientRect();
+    const eRect = card.getBoundingClientRect();
+    const relTop = eRect.top - cRect.top + container.scrollTop;
+    const raw = relTop - (cRect.height - eRect.height) / 2;
+    const maxScroll = container.scrollHeight - container.clientHeight;
+    return Math.max(0, Math.min(raw, maxScroll));
+  }
+  function step() {
+    if (done) return;
+    frame++;
+    const target = computeTarget();
+    const cur = container.scrollTop;
+    const delta = target - cur;
+    if (Math.abs(delta) < EPSILON || frame > MAX_FRAMES) {
+      finish(target);
+      return;
+    }
+    container.scrollTop = cur + delta * EASE;
+    requestAnimationFrame(step);
+  }
+  requestAnimationFrame(step);
+  // 安全網：分頁不在前景／視窗被切走等情況下，瀏覽器可能嚴重節流
+  // requestAnimationFrame，導致最後一兩幀遲遲排不到、動畫看起來卡住不會觸發
+  // onSettled。用一個獨立的setTimeout保底，3秒後如果還沒收斂就強制視為完成，
+  // 確保「捲動完自動開視窗」這個承諾一定會兌現，不會因為rAF被節流而整個卡住
+  setTimeout(() => finish(computeTarget()), 3000);
 }
 
 // 讓對應卡片的外框持續閃爍，直到使用者真的點開那部動畫（見 openDetailModal 裡的清除邏輯）

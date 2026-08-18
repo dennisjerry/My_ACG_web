@@ -1,11 +1,465 @@
 <!DOCTYPE html>
 <html lang="zh-Hant">
 <head>
+<script src="gate.js"></script>
 <meta charset="UTF-8">
-<meta http-equiv="refresh" content="0; url=動畫/anime_web.html">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>我的紀錄</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg:       #0d0d1a;
+  --bg2:      #13132a;
+  --bg3:      #1a1a35;
+  --bg4:      #22223f;
+  --border:   #2a2a50;
+  --accent:   #7c3aed;
+  --accent2:  #a78bfa;
+  --accent3:  #c4b5fd;
+  --green:    #10b981;
+  --yellow:   #f59e0b;
+  --red:      #ef4444;
+  --blue:     #60a5fa;
+  --text:     #e0e0f0;
+  --text2:    #9090b0;
+  --text3:    #555570;
+  --radius:   8px;
+}
+html { font-size: 14px; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Segoe UI', 'Microsoft JhengHei', sans-serif;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+a { color: inherit; text-decoration: none; }
+button { cursor: pointer; border: none; font-family: inherit; }
+
+/* ─── Layout（比照三個既有頁面：#app 撐滿 100vh，只有 #content 內部捲動，
+   #header 因為 flex-shrink:0 永遠固定在頂端不會被捲走）─── */
+#app { display: flex; flex-direction: column; height: 100vh; }
+
+/* ─── Header ─────────────────────────── */
+#header {
+  background: linear-gradient(135deg, #14142e 0%, #1a1a38 100%);
+  border-bottom: 1px solid var(--border);
+  padding: 0 20px;
+  box-shadow: 0 2px 20px rgba(0,0,0,0.4);
+  flex-shrink: 0;
+}
+#header-top { display: flex; align-items: center; gap: 16px; padding: 12px 0 8px; }
+#site-title {
+  font-size: 20px; font-weight: 800; letter-spacing: 3px;
+  background: linear-gradient(135deg, #a78bfa, #60a5fa);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+}
+#header-stats { font-size: 11px; color: var(--text3); margin-left: auto; }
+#nav-tabs { display: flex; gap: 2px; }
+.nav-tab {
+  padding: 8px 22px; font-size: 13px; font-weight: 600;
+  border-radius: 6px 6px 0 0; transition: all .2s;
+  background: transparent; color: var(--text3); position: relative;
+}
+.nav-tab.active { background: var(--accent); color: #fff; }
+.nav-tab .tab-count {
+  display: inline-block; background: rgba(255,255,255,.15);
+  border-radius: 8px; padding: 1px 6px; font-size: 10px; margin-left: 4px;
+}
+
+/* ─── Content ─────────────────────────── */
+#content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--bg4) transparent;
+}
+#content::-webkit-scrollbar { width: 6px; }
+#content::-webkit-scrollbar-thumb { background: var(--bg4); border-radius: 3px; }
+
+#load-error-banner {
+  display: none;
+  background: rgba(239,68,68,0.12); border: 1px solid rgba(239,68,68,0.4);
+  color: var(--red); border-radius: var(--radius); padding: 12px 16px;
+  margin-bottom: 16px; font-size: 13px;
+}
+
+/* ─── 三個媒介面板 ─────────────────────────── */
+.dash-grid {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px;
+  margin-bottom: 16px;
+}
+.dash-panel {
+  background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 16px; display: flex; flex-direction: column; gap: 10px;
+}
+.dash-panel-header { display: flex; align-items: center; gap: 8px; }
+.dash-panel-icon { font-size: 20px; }
+.dash-panel-title { font-size: 16px; font-weight: 700; }
+.dash-panel-stats { font-size: 12px; color: var(--text3); }
+.mock-tag { color: var(--yellow); }
+
+/* 每個面板一個明顯的風格化banner，放在統計數字下方、排名清單上方，用實際插圖
+   （動畫.png/漫畫.png/遊戲.png，三張圖已裁切成一致的長寬比）取代原本的emoji+
+   漸層設計，點擊導去該媒介頁面，目的是讓畫面更豐富、也提供一個比清單項目更
+   醒目的整體入口。aspect-ratio 固定容器高度，object-fit:cover 讓三張比例
+   略有零頭差異（2.999～3.002）的圖片都能填滿容器、不留白邊也不變形 */
+.dash-banner {
+  border-radius: var(--radius);
+  aspect-ratio: 3 / 1;
+  overflow: hidden;
+  cursor: pointer;
+  transition: transform .15s, box-shadow .15s;
+  box-shadow: 0 4px 14px rgba(0,0,0,.25);
+}
+.dash-banner:hover { transform: translateY(-2px); box-shadow: 0 8px 22px rgba(0,0,0,.4); }
+.dash-banner img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+.dash-panel-list { display: flex; flex-direction: column; gap: 4px; min-height: 60px; }
+.dash-list-item {
+  display: flex; align-items: center; gap: 8px;
+  padding: 4px 8px; border-radius: 6px; cursor: pointer; font-size: 13px;
+}
+.dash-list-item:hover { background: var(--bg3); }
+.dash-list-cover {
+  width: 32px; height: 44px; flex-shrink: 0; border-radius: 3px; overflow: hidden;
+  background: var(--bg3);
+}
+.dash-list-cover img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.dash-list-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
+.dash-list-sub { color: var(--text3); font-size: 11px; flex-shrink: 0; margin-left: auto; padding-left: 8px; }
+.dash-empty { color: var(--text3); font-size: 12px; padding: 10px 4px; text-align: center; }
+.dash-panel-footer {
+  font-size: 12px; color: var(--accent2); margin-top: auto; padding-top: 8px;
+  border-top: 1px solid var(--border); display: block;
+}
+.dash-panel-footer:hover { text-decoration: underline; }
+
+/* ─── 想看清單捷徑列 ─────────────────────────── */
+.backlog-row { display: flex; gap: 12px; margin-bottom: 8px; flex-wrap: wrap; }
+.backlog-item {
+  flex: 1; min-width: 200px;
+  background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 12px 16px; display: flex; align-items: center; justify-content: space-between;
+  gap: 10px; font-size: 13px;
+}
+.random-btn {
+  background: var(--bg3); color: var(--text); border: 1px solid var(--border);
+  border-radius: 6px; padding: 5px 10px; font-size: 12px; white-space: nowrap;
+}
+.random-btn:hover { border-color: var(--accent); }
+#random-result {
+  font-size: 13px; color: var(--text2); min-height: 20px; padding: 6px 4px 20px;
+}
+
+/* ─── 頁尾 ─────────────────────────── */
+#footer-dates { font-size: 11px; color: var(--text3); text-align: center; padding: 12px 0; }
+
+/* ─── Mobile（以 iPhone 14 Pro Max 的 430px 邏輯寬度為基準）────────── */
+@media (max-width: 600px) {
+  #header { padding: 0 10px; }
+  #header-top { gap: 6px; flex-wrap: wrap; padding: 8px 0 6px; }
+  #site-title { font-size: 15px; letter-spacing: 1px; }
+  #header-stats { font-size: 9px; width: 100%; margin-left: 0; order: 10; }
+  #nav-tabs { gap: 1px; }
+  .nav-tab { padding: 6px 12px; font-size: 12px; }
+  #content { padding: 12px 10px; }
+  .dash-grid { grid-template-columns: 1fr; }
+  .backlog-row { flex-direction: column; }
+  .backlog-item { min-width: 0; }
+}
+</style>
 </head>
-<body style="background:#0d0d1a;color:#e0e0f0;font-family:'Segoe UI','Microsoft JhengHei',sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0">
-導向中… <a href="動畫/anime_web.html" style="color:#a78bfa;margin-left:6px">點我</a>
+<body>
+
+<div id="app">
+
+<div id="header">
+  <div id="header-top">
+    <span id="site-title">MY RECORDS</span>
+    <span id="header-stats"></span>
+  </div>
+  <div id="nav-tabs">
+    <button class="nav-tab active">首頁</button>
+    <button class="nav-tab" onclick="window.location.href='動畫/anime_web.html'">
+      動畫 <span class="tab-count" id="anime-count"></span>
+    </button>
+    <button class="nav-tab" onclick="window.location.href='漫畫/comic_web.html'">
+      漫畫 <span class="tab-count" id="manga-count"></span>
+    </button>
+    <button class="nav-tab" onclick="window.location.href='遊戲/game_web.html'">
+      遊戲 <span class="tab-count" id="game-count"></span>
+    </button>
+  </div>
+</div>
+
+<div id="content">
+  <div id="load-error-banner">⚠ 無法載入任何資料。如果你是直接雙擊開啟這個檔案，請改用「開啟動畫紀錄.bat」透過網頁伺服器開啟。</div>
+
+  <div id="dash-grid" class="dash-grid"></div>
+
+  <div id="backlog-row" class="backlog-row"></div>
+  <div id="random-result"></div>
+
+  <div id="footer-dates"></div>
+</div>
+
+</div>
+
+<script>
+let ANIME = null, MANGA = null, GAME = null, GAME_IS_MOCK = false;
+
+function escHtml(s) {
+  return (s ?? '').toString().replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function isNews(e) { return e.title.startsWith('http'); }
+
+// 三個 data.js 都是 `const XXX_DATA = {...};` 包裝，不是純JSON檔案，
+// 這個解析技巧沿用 漫畫/comic_web.html 既有驗證過的寫法
+async function fetchJsData(path, varName) {
+  const resp = await fetch(path);
+  if (!resp.ok) throw new Error('fetch failed: ' + path);
+  const text = await resp.text();
+  const prefix = `const ${varName} = `;
+  return JSON.parse(text.slice(prefix.length, -1));
+}
+
+// ─── Init ────────────────────────────────────────────────────────────────
+async function loadAll() {
+  const results = await Promise.allSettled([
+    fetchJsData('動畫/data.js', 'ANIME_DATA'),
+    fetchJsData('漫畫/data.js', 'MANGA_DATA'),
+    fetchJsData('遊戲/data.js', 'GAME_DATA'),
+  ]);
+  if (results[0].status === 'fulfilled') ANIME = results[0].value.anime.filter(e => !isNews(e));
+  if (results[1].status === 'fulfilled') MANGA = results[1].value.manga;
+  if (results[2].status === 'fulfilled') {
+    GAME = results[2].value.games;
+    GAME_IS_MOCK = !!results[2].value.is_mock_data;
+  }
+
+  if (!ANIME && !MANGA && !GAME) {
+    document.getElementById('load-error-banner').style.display = 'block';
+  }
+
+  document.getElementById('anime-count').textContent = ANIME ? ANIME.length : '';
+  document.getElementById('manga-count').textContent = MANGA ? MANGA.length : '';
+  document.getElementById('game-count').textContent = GAME ? GAME.length : '';
+
+  renderHeaderStats();
+  renderPanels();
+  renderBacklogRow();
+}
+
+function renderHeaderStats() {
+  const parts = [];
+  if (ANIME) parts.push(`${ANIME.length} 部動畫`);
+  if (MANGA) parts.push(`${MANGA.length} 部漫畫`);
+  if (GAME) parts.push(`${GAME.length} 款遊戲`);
+  document.getElementById('header-stats').textContent = parts.join(' · ');
+}
+
+// ─── 封面圖網址 ──────────────────────────────────────────────────────────
+// 動畫/漫畫的 image_url／cover_path 都是「相對於各自資料夾本身」的本機路徑
+// （例如 covers/bgm_1851.jpg、漫畫封面/xxx.jpg），從專案根目錄的儀表板讀取時
+// 要補上資料夾前綴；如果剛好是遠端網址（http開頭）就不用補。
+function animeCoverUrl(e) {
+  if (!e.image_url) return null;
+  return e.image_url.startsWith('http') ? e.image_url : `動畫/${e.image_url}`;
+}
+function mangaCoverUrl(e) {
+  if (!e.cover_path) return null;
+  return `漫畫/${e.cover_path}`;
+}
+// 遊戲封面本來就是用 appid 組 Steam CDN 網址（比照 遊戲/game_web.html 的 coverUrl()），
+// 不需要任何本機路徑前綴，本機版跟GitHub Pages公開版都能直接使用
+function gameCoverUrl(appid) {
+  return `https://cdn.akamai.steamstatic.com/steam/apps/${appid}/library_600x900.jpg`;
+}
+
+// ─── 動畫排名依據：個人評分 + 兩個API評分的加權平均（個人權重2、API各權重1），
+// 只用「實際存在的分數」正規化平均，不要求三者都要有值 ──────────────────────
+function weightedAnimeScore(e) {
+  const parts = [];
+  if (e.score != null) parts.push([e.score, 2]);
+  if (e.bgm_score != null) parts.push([e.bgm_score, 1]);
+  if (e.mal_score != null) parts.push([e.mal_score, 1]);
+  if (!parts.length) return null;
+  const totalWeight = parts.reduce((s, [, w]) => s + w, 0);
+  const weightedSum = parts.reduce((s, [v, w]) => s + v * w, 0);
+  return weightedSum / totalWeight;
+}
+
+// ─── 各媒介的「前五名」清單，各自回傳統一格式 {title, sub, cover} ──────────
+function buildAnimeItems() {
+  if (!ANIME) return null;
+  // ⚠️ 一定要求 score!=null（使用者自己打過分），不能只靠 bgm/mal 的 API 評分就擠進榜——
+  // 否則會出現「這部我根本還沒打分，純粹靠外部評分」的排名，見 CLAUDE.md 相關記錄
+  return ANIME
+    .filter(e => e.score != null)
+    .map(e => ({ e, w: weightedAnimeScore(e) }))
+    .sort((a, b) => b.w - a.w)
+    .slice(0, 5)
+    .map(x => ({ title: x.e.title, sub: `${x.w.toFixed(1)} 分`, cover: animeCoverUrl(x.e), jumpParam: encodeURIComponent(x.e.title) }));
+}
+function buildMangaItems() {
+  if (!MANGA) return null;
+  // ⚠️ 不能只用 progress_status==='behind'（全庫64%都符合，等於重蹈統計小卡覆轍），
+  // 一定要疊加 want_to_read 收斂成使用者真正在意的清單
+  return MANGA
+    .filter(e => e.want_to_read && e.progress_status === 'behind')
+    .slice(0, 5)
+    .map(e => ({
+      title: e.title,
+      sub: e.read_progress ? `${e.read_progress} / ${e.latest_progress || ''}` : (e.latest_progress || ''),
+      cover: mangaCoverUrl(e),
+      jumpParam: encodeURIComponent(e.title),
+    }));
+}
+function buildGameItems() {
+  if (!GAME) return null;
+  return GAME
+    .filter(e => e.status === 'playing')
+    .slice(0, 5)
+    .map(e => ({
+      title: e.name,
+      sub: e.playtime_forever ? `${Math.round(e.playtime_forever / 60)} 小時` : '',
+      cover: gameCoverUrl(e.appid),
+      jumpParam: e.appid,
+    }));
+}
+
+// ─── 三個媒介面板 ────────────────────────────────────────────────────────
+// banner插圖檔案跟 index.html 同一層（專案根目錄），三張圖都已裁切成一致的
+// 長寬比（約3:1），見CLAUDE.md第28節「banner插圖」小節
+const BANNER_IMG = { anime: '動畫.png', manga: '漫畫.png', game: '遊戲.png' };
+
+function renderPanels() {
+  const grid = document.getElementById('dash-grid');
+  grid.innerHTML = [
+    renderPanel({
+      data: ANIME, icon: '🎬', name: '動畫', unit: '部', urlBase: '動畫/anime_web.html', theme: 'anime',
+      scoredFn: e => e.score, items: buildAnimeItems(),
+    }),
+    renderPanel({
+      data: MANGA, icon: '📖', name: '漫畫', unit: '部', urlBase: '漫畫/comic_web.html', theme: 'manga',
+      scoredFn: e => e.score, items: buildMangaItems(),
+    }),
+    renderPanel({
+      data: GAME, icon: '🎮', name: '遊戲', unit: '款', urlBase: '遊戲/game_web.html', theme: 'game',
+      scoredFn: e => e.score, items: buildGameItems(), mockWarning: GAME_IS_MOCK,
+    }),
+  ].join('');
+}
+
+function renderPanel({ data, icon, name, unit, urlBase, theme, scoredFn, items, mockWarning }) {
+  if (!data) {
+    return `<div class="dash-panel">
+      <div class="dash-panel-header"><span class="dash-panel-icon">${icon}</span><span class="dash-panel-title">${name}</span></div>
+      <div class="dash-empty">目前無法載入${escHtml(name)}資料</div>
+    </div>`;
+  }
+  const scored = data.filter(scoredFn).length;
+  // 每個項目點擊會帶著自己的 jumpParam 導到目標頁面，讓對應頁面能捲動＋閃爍
+  // 標示出這一筆的位置，不是只是單純導去該媒介頁面首頁（見 _dmScrollCard 等機制）
+  const listHtml = items.length
+    ? items.map(it => `<div class="dash-list-item" onclick="window.location.href='${urlBase}?jump=${it.jumpParam}'">
+        <div class="dash-list-cover">${it.cover ? `<img src="${escHtml(it.cover)}" loading="lazy" onerror="this.style.visibility='hidden'">` : ''}</div>
+        <span class="dash-list-title">${escHtml(it.title)}</span>
+        <span class="dash-list-sub">${escHtml(it.sub)}</span>
+      </div>`).join('')
+    : `<div class="dash-empty">目前沒有可顯示的項目</div>`;
+  return `<div class="dash-panel">
+    <div class="dash-panel-header">
+      <span class="dash-panel-icon">${icon}</span>
+      <span class="dash-panel-title">${name}</span>
+    </div>
+    <div class="dash-panel-stats">${data.length} ${unit} · ${scored} ${unit}有評分${mockWarning ? ' <span class="mock-tag">⚠ 模擬資料</span>' : ''}</div>
+    <div class="dash-banner" onclick="window.location.href='${urlBase}'">
+      <img src="${BANNER_IMG[theme]}" alt="前往${escHtml(name)}收藏">
+    </div>
+    <div class="dash-panel-list">${listHtml}</div>
+    <a class="dash-panel-footer" href="${urlBase}">查看全部 ${data.length} ${unit} →</a>
+  </div>`;
+}
+
+// ─── 想看清單捷徑列 + 隨機推薦 ──────────────────────────────────────────
+function renderBacklogRow() {
+  const row = document.getElementById('backlog-row');
+  const items = [];
+  if (ANIME) {
+    const n = ANIME.filter(e => e.want_to_watch).length;
+    items.push(`<div class="backlog-item"><span>💛 <b>${n}</b> 部動畫想看</span><button class="random-btn" onclick="randomPick('anime')">🎲 隨機推薦</button></div>`);
+  }
+  if (MANGA) {
+    const n = MANGA.filter(e => e.want_to_read).length;
+    items.push(`<div class="backlog-item"><span>💛 <b>${n}</b> 部漫畫想看</span><button class="random-btn" onclick="randomPick('manga')">🎲 隨機推薦</button></div>`);
+  }
+  if (GAME) {
+    const n = GAME.filter(e => e.status === 'want_to_play').length;
+    items.push(`<div class="backlog-item"><span>💛 <b>${n}</b> 款遊戲想玩</span><button class="random-btn" onclick="randomPick('game')">🎲 隨機推薦</button></div>`);
+  }
+  row.innerHTML = items.join('');
+}
+
+// 動畫/漫畫的「觀看進度」文字，格式沿用各自頁面本來就在用的既有寫法
+// （動畫: 動畫/anime_web.html 的 renderCardProgressInner()；漫畫: 漫畫/comic_web.html
+// 的 renderCard() progressLine），維持三頁一致的用語，不要自己發明新格式
+function animeProgressText(e) {
+  if (e.progress_watched == null) return '尚未開始';
+  return `${e.progress_watched}/${e.progress_total ?? '?'} 集`;
+}
+function mangaProgressText(e) {
+  if (e.read_progress_url) return '進度未記錄（有連結可繼續閱讀）';
+  return `${e.read_progress ? e.read_progress : '尚未記錄'} / ${e.latest_progress || '?'}`;
+}
+
+function randomPick(medium) {
+  let pool, urlBase, nameOf, jumpOf, progressOf;
+  if (medium === 'anime') {
+    pool = (ANIME || []).filter(e => e.want_to_watch);
+    urlBase = '動畫/anime_web.html'; nameOf = e => e.title;
+    jumpOf = e => encodeURIComponent(e.title);
+    progressOf = animeProgressText;
+  } else if (medium === 'manga') {
+    pool = (MANGA || []).filter(e => e.want_to_read);
+    urlBase = '漫畫/comic_web.html'; nameOf = e => e.title;
+    jumpOf = e => encodeURIComponent(e.title);
+    progressOf = mangaProgressText;
+  } else {
+    pool = (GAME || []).filter(e => e.status === 'want_to_play');
+    urlBase = '遊戲/game_web.html'; nameOf = e => e.name;
+    jumpOf = e => e.appid;
+    progressOf = null;  // 遊戲的想玩清單沒有對應的「進度」概念可顯示，使用者只要求動畫/漫畫
+  }
+  const box = document.getElementById('random-result');
+  if (!pool.length) { box.textContent = '目前沒有想看/想玩清單可以抽'; return; }
+  const pick = pool[Math.floor(Math.random() * pool.length)];
+  const progressHtml = progressOf ? `　<span style="color:var(--text3)">${escHtml(progressOf(pick))}</span>` : '';
+  // 連結帶 ?jump= 深連結參數，讓目標頁面捲到卡片位置並自動閃爍＋開啟詳情視窗
+  // （見各頁面 handleJumpParam()），跟上方「前五排行」清單點擊是同一套機制
+  box.innerHTML = `🎲 抽到了：<b>${escHtml(nameOf(pick))}</b>${progressHtml} <a href="${urlBase}?jump=${jumpOf(pick)}" style="color:var(--accent2)">前往查看 →</a>`;
+}
+
+// ─── 頁尾：三頁各自的最後更新日期 ────────────────────────────────────────
+async function loadFooterDates() {
+  const results = await Promise.allSettled([
+    fetch('動畫/last_updated.json').then(r => r.json()),
+    fetch('漫畫/last_updated.json').then(r => r.json()),
+    fetch('遊戲/last_updated.json').then(r => r.json()),
+  ]);
+  const labels = ['動畫', '漫畫', '遊戲'];
+  const parts = results.map((r, i) => {
+    if (r.status !== 'fulfilled' || !r.value.date) return null;
+    return `${labels[i]} ${r.value.date}`;
+  }).filter(Boolean);
+  document.getElementById('footer-dates').textContent = parts.length ? `最後更新：${parts.join('　')}` : '';
+}
+
+loadAll();
+loadFooterDates();
+</script>
 </body>
 </html>
