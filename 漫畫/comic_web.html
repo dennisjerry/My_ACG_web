@@ -95,12 +95,12 @@ button { cursor: pointer; border: none; font-family: inherit; }
 }
 .filt-btn.on { background: var(--accent); color: #fff; border-color: var(--accent); }
 #result-count { font-size: 11px; color: var(--text3); margin-left: auto; white-space: nowrap; }
-#sort-select {
+#sort-select, #score-select {
   padding: 5px 8px; font-size: 11px; border-radius: 6px;
   background: var(--bg3); color: var(--text); border: 1px solid var(--border);
   outline: none; cursor: pointer;
 }
-#sort-select:focus { border-color: var(--accent); }
+#sort-select:focus, #score-select:focus { border-color: var(--accent); }
 
 /* ─── Cards grid ─────────────────────────── */
 #content {
@@ -274,7 +274,20 @@ button { cursor: pointer; border: none; font-family: inherit; }
   </select>
   <button class="filt-btn" id="sort-reverse-btn" onclick="toggleSortReverse()" title="切換成倒序">↓ 正序</button>
   <div class="filter-sep"></div>
-  <div class="filter-group" id="score-filters"></div>
+  <select id="score-select" onchange="state.scoreFilter = this.value; applyFilters();" title="依個人評分篩選">
+    <option value="all">全部評分</option>
+    <option value="10">★10</option>
+    <option value="9">★9</option>
+    <option value="8">★8</option>
+    <option value="7">★7</option>
+    <option value="6">★6</option>
+    <option value="5">★5</option>
+    <option value="4">★4</option>
+    <option value="3">★3</option>
+    <option value="2">★2</option>
+    <option value="1">★1</option>
+    <option value="none">未評分</option>
+  </select>
   <div class="filter-sep"></div>
   <div class="filter-group" id="status-filters">
     <button class="filt-btn on" id="status-btn-caught_up" onclick="toggleShowStatus('caught_up')" title="已看到最新進度">🟢 追上進度</button>
@@ -344,7 +357,7 @@ button { cursor: pointer; border: none; font-family: inherit; }
 const data = MANGA_DATA.manga;
 const state = {
   search: '',
-  showScores: { 10:true, 9:true, 8:true, 7:true, 6:true, 5:true, 4:true, 3:true, 2:true, 1:true, none:true },
+  scoreFilter: 'all',
   showStatuses: { caught_up: true, behind: true, unknown: true },
   activeBlockReasons: new Set(), // 空集合＝正常顯示全部；選了任何一個＝只顯示對應原因被屏蔽的漫畫，方便自行複查
   sortBy: 'default', // 2026-08-16新增：'default'＝觀看順序（不排序，維持data陣列原本順序，也就是使用者最在意的「觀看先後」）
@@ -506,10 +519,88 @@ function filterData() {
   }
   return data.filter(e => {
     if (q && !e.title.toLowerCase().includes(q) && !(e.author || '').toLowerCase().includes(q)) return false;
-    const scoreKey = e.score ? Math.round(e.score) : 'none';
-    if (!state.showScores[scoreKey]) return false;
+    if (state.scoreFilter !== 'all') {
+      const scoreKey = e.score ? String(Math.round(e.score)) : 'none';
+      if (scoreKey !== state.scoreFilter) return false;
+    }
     if (!state.showStatuses[e.progress_status]) return false;
     return true;
+  });
+}
+
+// ─── 篩選按鈕/下拉選單的即時數量（faceted count，比照 遊戲/game_web.html 的
+// computeFacetCounts()/updateFilterCounts() 模式）─────────────────────────
+// 每個選項顯示的數字＝套用搜尋文字＋其他群組目前的篩選條件，但不套用這個選項
+// 自己所屬群組的目前選擇。「優先補完/連結待更新/想看/屏蔽原因」這幾顆是觸發
+// 獨立檢視模式的按鈕（點下去會忽略評分/狀態篩選，見 filterData()），彼此也
+// 互不套用，只共用搜尋文字這個共同條件，跟 renderContent() 既有的 denom
+// 計算是同樣的個別條件、只是這裡要一次算出全部按鈕的數字，不是只算目前作用中
+// 那一個。
+function computeFacetCounts() {
+  const q = state.search.toLowerCase();
+  const passSearch = e => !q || e.title.toLowerCase().includes(q) || (e.author || '').toLowerCase().includes(q);
+
+  const scoreCounts = {};
+  const statusCounts = {};
+  data.forEach(e => {
+    if (!passSearch(e)) return;
+    const scoreKey = e.score ? String(Math.round(e.score)) : 'none';
+    const scoreOk = state.scoreFilter === 'all' || state.scoreFilter === scoreKey;
+
+    // 分數桶：套用狀態篩選，不套用分數篩選本身
+    if (state.showStatuses[e.progress_status]) {
+      scoreCounts[scoreKey] = (scoreCounts[scoreKey] || 0) + 1;
+    }
+    // 狀態桶：套用分數篩選，不套用狀態篩選本身
+    if (scoreOk) {
+      statusCounts[e.progress_status] = (statusCounts[e.progress_status] || 0) + 1;
+    }
+  });
+
+  let priorityFinishCount = 0, linkStaleCount = 0, wantToReadCount = 0;
+  const blockReasonCounts = {};
+  data.forEach(e => {
+    if (!passSearch(e)) return;
+    if (e.serialization_status === '已完结' && e.progress_status === 'behind') priorityFinishCount++;
+    if (e.link_stale) linkStaleCount++;
+    if (e.want_to_read) wantToReadCount++;
+    if (e.blocked) {
+      const key = blockReasonKey(e.blocked_reason);
+      blockReasonCounts[key] = (blockReasonCounts[key] || 0) + 1;
+    }
+  });
+
+  return { scoreCounts, statusCounts, priorityFinishCount, linkStaleCount, wantToReadCount, blockReasonCounts };
+}
+
+function updateFilterCounts() {
+  const c = computeFacetCounts();
+
+  const scoreAllCount = Object.values(c.scoreCounts).reduce((a, b) => a + b, 0);
+  const sel = document.getElementById('score-select');
+  if (sel) {
+    for (const opt of sel.options) {
+      const label = opt.value === 'all' ? '全部評分' : (opt.value === 'none' ? '未評分' : `★${opt.value}`);
+      const count = opt.value === 'all' ? scoreAllCount : (c.scoreCounts[opt.value] || 0);
+      opt.textContent = `${label} (${count})`;
+    }
+  }
+
+  for (const st of ['caught_up', 'behind', 'unknown']) {
+    const btn = document.getElementById(`status-btn-${st}`);
+    if (btn) btn.textContent = `${statusLabel(st)} (${c.statusCounts[st] || 0})`;
+  }
+
+  const pfBtn = document.getElementById('priority-finish-btn');
+  if (pfBtn) pfBtn.textContent = `🎯 優先補完 (${c.priorityFinishCount})`;
+  const lsBtn = document.getElementById('link-stale-btn');
+  if (lsBtn) lsBtn.textContent = `🔗 連結待更新 (${c.linkStaleCount})`;
+  const wtrBtn = document.getElementById('want-to-read-btn');
+  if (wtrBtn) wtrBtn.textContent = `💛 想看 (${c.wantToReadCount})`;
+
+  BLOCK_REASON_CATEGORIES.concat([{ key: 'other', label: '❔ 其他原因' }]).forEach(cat => {
+    const btn = document.getElementById(`block-reason-btn-${cat.key}`);
+    if (btn) btn.textContent = `${cat.label} (${c.blockReasonCounts[cat.key] || 0})`;
   });
 }
 
@@ -531,37 +622,10 @@ function toggleWantToReadMode() {
   applyFilters();
 }
 
-function toggleShowScore(key) {
-  state.showScores[key] = !state.showScores[key];
-  document.getElementById(`score-btn-${key}`).classList.toggle('on', state.showScores[key]);
-  applyFilters();
-}
-
 function toggleShowStatus(status) {
   state.showStatuses[status] = !state.showStatuses[status];
   document.getElementById(`status-btn-${status}`).classList.toggle('on', state.showStatuses[status]);
   applyFilters();
-}
-
-function initScoreBar() {
-  const bar = document.getElementById('score-filters');
-  bar.innerHTML = '';
-  for (let s = 10; s >= 1; s--) {
-    const btn = document.createElement('button');
-    btn.className = 'filt-btn on';
-    btn.id = `score-btn-${s}`;
-    btn.title = `點擊可切換是否顯示評分${s}分的漫畫`;
-    btn.textContent = `★${s}`;
-    btn.onclick = () => toggleShowScore(s);
-    bar.appendChild(btn);
-  }
-  const noneBtn = document.createElement('button');
-  noneBtn.className = 'filt-btn on';
-  noneBtn.id = 'score-btn-none';
-  noneBtn.title = '點擊可切換是否顯示尚未評分的漫畫';
-  noneBtn.textContent = '未評分';
-  noneBtn.onclick = () => toggleShowScore('none');
-  bar.appendChild(noneBtn);
 }
 
 function toggleBlockReason(key) {
@@ -601,6 +665,7 @@ function initBlockReasonBar() {
 function applyFilters() {
   state.search = document.getElementById('search-box').value;
   renderContent(sortData(filterData()));
+  updateFilterCounts();
 }
 
 // ─── Render ──────────────────────────────────────────────────────────────
@@ -897,7 +962,6 @@ updateHeaderStats();
 loadAnimeCount();
 loadGameCount();
 loadLastUpdated();
-initScoreBar();
 initBlockReasonBar();
 applyFilters();
 

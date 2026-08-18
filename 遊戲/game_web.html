@@ -5,7 +5,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>我的遊戲紀錄</title>
-<script src="data.js?v=1784214683"></script>
+<script src="data.js?v=1787034868"></script>
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 :root {
@@ -99,6 +99,12 @@ button { cursor: pointer; border: none; font-family: inherit; }
 }
 .filt-btn.on { background: var(--accent); color: #fff; border-color: var(--accent); }
 #result-count { font-size: 11px; color: var(--text3); margin-left: auto; white-space: nowrap; }
+#sort-select, #score-select {
+  padding: 5px 8px; font-size: 11px; border-radius: 6px;
+  background: var(--bg3); color: var(--text); border: 1px solid var(--border);
+  outline: none; cursor: pointer;
+}
+#sort-select:focus, #score-select:focus { border-color: var(--accent); }
 
 /* ─── Cards grid ─────────────────────────── */
 #content {
@@ -139,6 +145,7 @@ button { cursor: pointer; border: none; font-family: inherit; }
 }
 .card .card-playtime { font-size: 10px; color: var(--text2); }
 .card .card-recent { font-size: 10px; color: var(--accent2); }
+.card .card-achievements { font-size: 10px; color: var(--yellow); }
 .card .card-bottom-row { margin-top: auto; display: flex; align-items: center; justify-content: space-between; gap: 6px; }
 .status-badge { font-size: 10px; padding: 1px 7px; border-radius: 8px; white-space: nowrap; }
 .status-badge.want_to_play { color: var(--text3); background: var(--bg4); }
@@ -167,6 +174,10 @@ button { cursor: pointer; border: none; font-family: inherit; }
 #detail-box .dm-link { font-size: 11px; color: var(--accent2); margin-top: 6px; display: inline-block; }
 #detail-box .dm-link:hover { text-decoration: underline; }
 #detail-box .dm-playtime-line { font-size: 12px; color: var(--text2); margin-top: 8px; line-height: 1.7; }
+.dm-achv-wrap { margin-top: 10px; }
+.dm-achv-label { font-size: 11px; color: var(--text3); margin-bottom: 4px; }
+.dm-achv-bar { height: 6px; border-radius: 3px; background: var(--bg4); overflow: hidden; }
+.dm-achv-fill { height: 100%; background: var(--yellow); border-radius: 3px; }
 .dm-field { margin-bottom: 12px; }
 .dm-field label { display: block; font-size: 10px; color: var(--text3); margin-bottom: 4px; }
 .dm-field textarea, .dm-field input[type="text"] {
@@ -255,7 +266,28 @@ button { cursor: pointer; border: none; font-family: inherit; }
 <div id="filter-bar">
   <input id="search-box" type="text" placeholder="搜尋遊戲名稱…" oninput="applyFilters()">
   <div class="filter-sep"></div>
-  <div class="filter-group" id="score-filters"></div>
+  <select id="sort-select" onchange="state.sortBy = this.value; applyFilters();" title="排序方式">
+    <option value="default">⏱ 遊玩時數（多→少，預設）</option>
+    <option value="achievement_desc">🏆 成就完成度（高→低）</option>
+    <option value="score_desc">⭐ 個人評分（高→低）</option>
+    <option value="recent_desc">🕐 最近遊玩（新→舊）</option>
+  </select>
+  <button class="filt-btn" id="sort-reverse-btn" onclick="toggleSortReverse()" title="切換成倒序">↓ 正序</button>
+  <div class="filter-sep"></div>
+  <select id="score-select" onchange="state.scoreFilter = this.value; applyFilters();" title="依個人評分篩選">
+    <option value="all">全部評分</option>
+    <option value="10">★10</option>
+    <option value="9">★9</option>
+    <option value="8">★8</option>
+    <option value="7">★7</option>
+    <option value="6">★6</option>
+    <option value="5">★5</option>
+    <option value="4">★4</option>
+    <option value="3">★3</option>
+    <option value="2">★2</option>
+    <option value="1">★1</option>
+    <option value="none">未評分</option>
+  </select>
   <div class="filter-sep"></div>
   <div class="filter-group" id="status-filters">
     <button class="filt-btn on" id="status-btn-want_to_play" onclick="toggleShowStatus('want_to_play')" title="遊玩時數為0">⚪ 想玩</button>
@@ -263,6 +295,8 @@ button { cursor: pointer; border: none; font-family: inherit; }
     <button class="filt-btn on" id="status-btn-completed" onclick="toggleShowStatus('completed')" title="手動標記為已通關">🟢 已通關</button>
     <button class="filt-btn on" id="status-btn-dropped" onclick="toggleShowStatus('dropped')" title="手動標記為棄坑">🔴 棄坑</button>
   </div>
+  <div class="filter-sep"></div>
+  <button class="filt-btn" id="achievement-filter-btn" onclick="toggleAchievementFilter()" title="只顯示有成就系統（achievements_total有值）的遊戲">🏆 只看有成就</button>
   <span id="result-count"></span>
 </div>
 
@@ -285,6 +319,10 @@ button { cursor: pointer; border: none; font-family: inherit; }
         <div class="dm-title" id="dm-title"></div>
         <a class="dm-link" id="dm-link" target="_blank" rel="noopener">在 Steam 商店開啟 ↗</a>
         <div class="dm-playtime-line" id="dm-playtime-line"></div>
+        <div class="dm-achv-wrap" id="dm-achv-wrap" style="display:none">
+          <div class="dm-achv-label" id="dm-achv-label"></div>
+          <div class="dm-achv-bar"><div class="dm-achv-fill" id="dm-achv-fill"></div></div>
+        </div>
       </div>
     </div>
 
@@ -315,7 +353,10 @@ button { cursor: pointer; border: none; font-family: inherit; }
 const data = GAME_DATA.games;
 const state = {
   search: '',
-  showScores: { 10:true, 9:true, 8:true, 7:true, 6:true, 5:true, 4:true, 3:true, 2:true, 1:true, none:true },
+  sortBy: 'default',
+  sortReverse: false,
+  onlyAchievements: false,
+  scoreFilter: 'all',
   showStatuses: { want_to_play: true, playing: true, completed: true, dropped: true },
 };
 let _dmCurrentAppid = null;
@@ -325,6 +366,7 @@ function escHtml(s) {
 }
 
 const STATUS_LABEL = { want_to_play: '⚪ 想玩', playing: '🔵 遊玩中', completed: '🟢 已通關', dropped: '🔴 棄坑' };
+const SCORE_OPTION_LABEL = { all: '全部評分', 10: '★10', 9: '★9', 8: '★8', 7: '★7', 6: '★6', 5: '★5', 4: '★4', 3: '★3', 2: '★2', 1: '★1', none: '未評分' };
 
 function fmtHours(minutes) {
   const h = minutes / 60;
@@ -376,16 +418,115 @@ function filterData() {
   const q = state.search.toLowerCase();
   return data.filter(e => {
     if (q && !e.name.toLowerCase().includes(q)) return false;
-    const scoreKey = e.score ? Math.round(e.score) : 'none';
-    if (!state.showScores[scoreKey]) return false;
+    if (state.scoreFilter !== 'all') {
+      const scoreKey = e.score ? String(Math.round(e.score)) : 'none';
+      if (scoreKey !== state.scoreFilter) return false;
+    }
     if (!state.showStatuses[e.status]) return false;
+    if (state.onlyAchievements && !e.achievements_total) return false;
     return true;
-  }).sort((a, b) => b.playtime_forever - a.playtime_forever);
+  });
 }
 
-function toggleShowScore(key) {
-  state.showScores[key] = !state.showScores[key];
-  document.getElementById(`score-btn-${key}`).classList.toggle('on', state.showScores[key]);
+// ─── 篩選按鈕/下拉選單的即時數量（faceted count）─────────────────────────
+// 每個選項顯示的數字＝「搜尋文字 + 其他群組目前的篩選條件」都套用、但**不**套用
+// 這個選項自己所屬群組的目前選擇，算出「切成這個選項」會有多少筆。這樣不管
+// 目前選到哪個選項，數字都代表「切成這個選項會有多少筆」，隨著使用者調整搜尋/
+// 其他篩選而即時更新，不是開機當下算一次就不動的靜態總數。
+function computeFacetCounts() {
+  const q = state.search.toLowerCase();
+  const passSearch = e => !q || e.name.toLowerCase().includes(q);
+
+  const scoreCounts = {};
+  const statusCounts = {};
+  let achievementCount = 0;
+  data.forEach(e => {
+    if (!passSearch(e)) return;
+    const scoreKey = e.score ? String(Math.round(e.score)) : 'none';
+
+    // 分數桶：套用狀態+成就篩選，不套用分數篩選本身
+    if (state.showStatuses[e.status] && (!state.onlyAchievements || e.achievements_total)) {
+      scoreCounts[scoreKey] = (scoreCounts[scoreKey] || 0) + 1;
+    }
+    // 狀態桶：套用分數+成就篩選，不套用狀態篩選本身
+    if ((state.scoreFilter === 'all' || state.scoreFilter === scoreKey) && (!state.onlyAchievements || e.achievements_total)) {
+      statusCounts[e.status] = (statusCounts[e.status] || 0) + 1;
+    }
+    // 成就篩選：套用分數+狀態篩選，不套用成就篩選本身，只算「有成就系統」的筆數
+    if ((state.scoreFilter === 'all' || state.scoreFilter === scoreKey) && state.showStatuses[e.status] && e.achievements_total) {
+      achievementCount++;
+    }
+  });
+  return { scoreCounts, statusCounts, achievementCount };
+}
+
+function updateFilterCounts() {
+  const { scoreCounts, statusCounts, achievementCount } = computeFacetCounts();
+  const scoreAllCount = Object.values(scoreCounts).reduce((a, b) => a + b, 0);
+  const sel = document.getElementById('score-select');
+  if (sel) {
+    for (const opt of sel.options) {
+      const label = SCORE_OPTION_LABEL[opt.value];
+      const count = opt.value === 'all' ? scoreAllCount : (scoreCounts[opt.value] || 0);
+      opt.textContent = `${label} (${count})`;
+    }
+  }
+
+  for (const st of ['want_to_play', 'playing', 'completed', 'dropped']) {
+    const btn = document.getElementById(`status-btn-${st}`);
+    if (btn) btn.textContent = `${STATUS_LABEL[st]} (${statusCounts[st] || 0})`;
+  }
+
+  const achvBtn = document.getElementById('achievement-filter-btn');
+  if (achvBtn) achvBtn.textContent = `🏆 只看有成就 (${achievementCount})`;
+}
+
+// ─── Sort（比照 漫畫/comic_web.html 的 sortData() 模式）───────────────────
+// 'default' 維持改版前的既有行為（遊玩時數多→少），不是「不排序」；其餘排序
+// 缺值一律排到最後、不受倒序影響（dir只套用在雙方都有值、真的能比較的情況）。
+function sortData(list) {
+  const dir = state.sortReverse ? -1 : 1;
+  if (state.sortBy === 'achievement_desc') {
+    list.sort((a, b) => {
+      const pa = a.achievements_total ? a.achievements_unlocked / a.achievements_total : null;
+      const pb = b.achievements_total ? b.achievements_unlocked / b.achievements_total : null;
+      if (pa == null && pb == null) return 0;
+      if (pa == null) return 1;
+      if (pb == null) return -1;
+      return dir * (pb - pa);
+    });
+  } else if (state.sortBy === 'score_desc') {
+    list.sort((a, b) => {
+      if (a.score == null && b.score == null) return 0;
+      if (a.score == null) return 1;
+      if (b.score == null) return -1;
+      return dir * (b.score - a.score);
+    });
+  } else if (state.sortBy === 'recent_desc') {
+    list.sort((a, b) => {
+      if (!a.rtime_last_played && !b.rtime_last_played) return 0;
+      if (!a.rtime_last_played) return 1;
+      if (!b.rtime_last_played) return -1;
+      return dir * (b.rtime_last_played - a.rtime_last_played);
+    });
+  } else {
+    // 'default'：遊玩時數多→少，跟改版前的舊行為完全一致
+    list.sort((a, b) => dir * (b.playtime_forever - a.playtime_forever));
+  }
+  return list;
+}
+
+function toggleSortReverse() {
+  state.sortReverse = !state.sortReverse;
+  const btn = document.getElementById('sort-reverse-btn');
+  btn.textContent = state.sortReverse ? '↑ 倒序' : '↓ 正序';
+  btn.classList.toggle('on', state.sortReverse);
+  applyFilters();
+}
+
+function toggleAchievementFilter() {
+  state.onlyAchievements = !state.onlyAchievements;
+  document.getElementById('achievement-filter-btn').classList.toggle('on', state.onlyAchievements);
   applyFilters();
 }
 
@@ -395,36 +536,21 @@ function toggleShowStatus(status) {
   applyFilters();
 }
 
-function initScoreBar() {
-  const bar = document.getElementById('score-filters');
-  bar.innerHTML = '';
-  for (let s = 10; s >= 1; s--) {
-    const btn = document.createElement('button');
-    btn.className = 'filt-btn on';
-    btn.id = `score-btn-${s}`;
-    btn.title = `點擊可切換是否顯示評分${s}分的遊戲`;
-    btn.textContent = `★${s}`;
-    btn.onclick = () => toggleShowScore(s);
-    bar.appendChild(btn);
-  }
-  const noneBtn = document.createElement('button');
-  noneBtn.className = 'filt-btn on';
-  noneBtn.id = 'score-btn-none';
-  noneBtn.title = '點擊可切換是否顯示尚未評分的遊戲';
-  noneBtn.textContent = '未評分';
-  noneBtn.onclick = () => toggleShowScore('none');
-  bar.appendChild(noneBtn);
-}
-
 function applyFilters() {
   state.search = document.getElementById('search-box').value;
-  renderContent(filterData());
+  renderContent(sortData(filterData()));
+  updateFilterCounts();
 }
 
 // ─── Render ──────────────────────────────────────────────────────────────
 function renderCard(e) {
   const recentHtml = e.playtime_2weeks
     ? `<div class="card-recent">🔥 近兩週 ${fmtHours(e.playtime_2weeks)}</div>` : '';
+  // 成就進度：只有 achievements_total 有值（這款遊戲真的有成就系統、且查詢成功過）
+  // 才顯示，null代表「沒有成就系統」或「還沒執行過fetch_achievements.py查詢」，
+  // 兩種情況都不該顯示誤導的「0/0」
+  const achvHtml = e.achievements_total
+    ? `<div class="card-achievements">🏆 ${e.achievements_unlocked}/${e.achievements_total}（${Math.round(e.achievements_unlocked / e.achievements_total * 100)}%）</div>` : '';
   return `<div class="card" data-appid="${e.appid}" onclick="openDetailModal(${e.appid})">
     <div class="cover-wrap">
       <img src="${coverUrl(e.appid, 0)}" alt="${escHtml(e.name)}" loading="lazy" onerror="_imgFallback(this, ${e.appid})">
@@ -433,6 +559,7 @@ function renderCard(e) {
       <div class="card-title">${escHtml(e.name)}</div>
       <div class="card-playtime">${e.playtime_forever ? '已玩 ' + fmtHours(e.playtime_forever) : '尚未遊玩'}</div>
       ${recentHtml}
+      ${achvHtml}
       <div class="card-bottom-row">
         <span class="status-badge ${e.status}">${STATUS_LABEL[e.status]}</span>
         <span class="card-score">${e.score ? '★' + e.score : ''}</span>
@@ -550,6 +677,15 @@ function openDetailModal(appid) {
     `總遊玩時數：${fmtHours(e.playtime_forever)}<br>` +
     (e.playtime_2weeks ? `近兩週：${fmtHours(e.playtime_2weeks)}<br>` : '') +
     `最後遊玩：${fmtLastPlayed(e.rtime_last_played)}`;
+  const achvWrap = document.getElementById('dm-achv-wrap');
+  if (e.achievements_total) {
+    const pct = Math.round(e.achievements_unlocked / e.achievements_total * 100);
+    document.getElementById('dm-achv-label').textContent = `🏆 成就進度：${e.achievements_unlocked}/${e.achievements_total}（${pct}%）`;
+    document.getElementById('dm-achv-fill').style.width = pct + '%';
+    achvWrap.style.display = 'block';
+  } else {
+    achvWrap.style.display = 'none';
+  }
   document.getElementById('dm-comment').value = e.comment || '';
   renderScoreRow(e.score);
   renderStatusRow(e.status);
@@ -725,7 +861,6 @@ updateHeaderStats();
 loadAnimeCount();
 loadMangaCount();
 loadLastUpdated();
-initScoreBar();
 applyFilters();
 
 (function handleJumpParam() {

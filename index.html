@@ -278,6 +278,13 @@ function mangaCoverUrl(e) {
 function gameCoverUrl(appid) {
   return `https://cdn.akamai.steamstatic.com/steam/apps/${appid}/library_600x900.jpg`;
 }
+// achievements_total 是 falsy（null／0）代表「沒有成就系統」或「還沒查詢過」，
+// 兩種情況都不顯示——跟 遊戲/game_web.html 的 renderCard() 判斷邏輯一致
+function gameAchievementText(e) {
+  if (!e.achievements_total) return '';
+  const pct = Math.round(e.achievements_unlocked / e.achievements_total * 100);
+  return `🏆 ${e.achievements_unlocked}/${e.achievements_total}（${pct}%）`;
+}
 
 // ─── 動畫排名依據：個人評分 + 兩個API評分的加權平均（個人權重2、API各權重1），
 // 只用「實際存在的分數」正規化平均，不要求三者都要有值 ──────────────────────
@@ -323,12 +330,13 @@ function buildGameItems() {
   return GAME
     .filter(e => e.status === 'playing')
     .slice(0, 5)
-    .map(e => ({
-      title: e.name,
-      sub: e.playtime_forever ? `${Math.round(e.playtime_forever / 60)} 小時` : '',
-      cover: gameCoverUrl(e.appid),
-      jumpParam: e.appid,
-    }));
+    .map(e => {
+      const parts = [];
+      if (e.playtime_forever) parts.push(`${Math.round(e.playtime_forever / 60)} 小時`);
+      const achv = gameAchievementText(e);
+      if (achv) parts.push(achv);
+      return { title: e.name, sub: parts.join(' · '), cover: gameCoverUrl(e.appid), jumpParam: e.appid };
+    });
 }
 
 // ─── 三個媒介面板 ────────────────────────────────────────────────────────
@@ -417,27 +425,31 @@ function mangaProgressText(e) {
 }
 
 function randomPick(medium) {
-  let pool, urlBase, nameOf, jumpOf, progressOf;
+  let pool, urlBase, nameOf, jumpOf, subOf;
   if (medium === 'anime') {
     pool = (ANIME || []).filter(e => e.want_to_watch);
     urlBase = '動畫/anime_web.html'; nameOf = e => e.title;
     jumpOf = e => encodeURIComponent(e.title);
-    progressOf = animeProgressText;
+    subOf = animeProgressText;
   } else if (medium === 'manga') {
     pool = (MANGA || []).filter(e => e.want_to_read);
     urlBase = '漫畫/comic_web.html'; nameOf = e => e.title;
     jumpOf = e => encodeURIComponent(e.title);
-    progressOf = mangaProgressText;
+    subOf = mangaProgressText;
   } else {
     pool = (GAME || []).filter(e => e.status === 'want_to_play');
     urlBase = '遊戲/game_web.html'; nameOf = e => e.name;
     jumpOf = e => e.appid;
-    progressOf = null;  // 遊戲的想玩清單沒有對應的「進度」概念可顯示，使用者只要求動畫/漫畫
+    // 想玩清單裡的遊戲通常playtime_forever=0，fetch_achievements.py本來就只查有玩過的
+    // 遊戲，所以這裡幾乎都會回傳空字串、優雅地不顯示——不是寫死不支援，只是資料上
+    // 天生很少見（例如使用者手動把有玩過的遊戲改回「想玩」狀態時才會有資料可顯示）
+    subOf = gameAchievementText;
   }
   const box = document.getElementById('random-result');
   if (!pool.length) { box.textContent = '目前沒有想看/想玩清單可以抽'; return; }
   const pick = pool[Math.floor(Math.random() * pool.length)];
-  const progressHtml = progressOf ? `　<span style="color:var(--text3)">${escHtml(progressOf(pick))}</span>` : '';
+  const subText = subOf(pick);
+  const progressHtml = subText ? `　<span style="color:var(--text3)">${escHtml(subText)}</span>` : '';
   // 連結帶 ?jump= 深連結參數，讓目標頁面捲到卡片位置並自動閃爍＋開啟詳情視窗
   // （見各頁面 handleJumpParam()），跟上方「前五排行」清單點擊是同一套機制
   box.innerHTML = `🎲 抽到了：<b>${escHtml(nameOf(pick))}</b>${progressHtml} <a href="${urlBase}?jump=${jumpOf(pick)}" style="color:var(--accent2)">前往查看 →</a>`;

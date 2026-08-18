@@ -257,6 +257,12 @@ button { cursor: pointer; border: none; font-family: inherit; }
   color: var(--accent3);
 }
 #result-count { margin-left: auto; font-size: 11px; color: var(--text3); white-space: nowrap; }
+#score-select {
+  padding: 4px 8px; font-size: 11px; border-radius: 6px;
+  background: var(--bg3); color: var(--text); border: 1px solid var(--border);
+  outline: none; cursor: pointer;
+}
+#score-select:focus { border-color: var(--accent); }
 
 /* ─── Main Layout ──────────────────────────── */
 #main { display: flex; flex: 1; overflow: hidden; }
@@ -952,7 +958,14 @@ button { cursor: pointer; border: none; font-family: inherit; }
   opacity: .9;
 }
 
-/* ─── Category Filter Bar ───────────────────── */
+/* ─── Category Filter Bar ─────────────────────
+   2026-08-18：分類標籤的UI演變（見第29.5/29.6/29.7節）：38+顆按鈕全部展開
+   →單一下拉選單（東西太多要滾動）→兩層都是下拉選單（大分類也要點開才
+   看得到）→大分類按鈕+共用細項下拉選單（使用者接著要求：乾脆每個大分類
+   都各自是一個下拉選單，收合狀態直接顯示群組名稱本身，完全不用點開任何
+   東西就能看到全部14個大分類）。現在每個大分類都是獨立的.cat-group-select
+   下拉選單，一直顯示；「全部分類」是唯一維持按鈕形式的重置控制項，見第
+   29.7節。────────────────────────────────────────────────────────── */
 #cat-bar {
   background: #0f0f22;
   border-bottom: 1px solid var(--border);
@@ -962,29 +975,8 @@ button { cursor: pointer; border: none; font-family: inherit; }
   flex-wrap: wrap;
   gap: 5px;
 }
-.cat-btn {
-  padding: 3px 10px;
-  border-radius: 12px;
-  font-size: 11px;
-  font-weight: 600;
-  white-space: nowrap;
-  border: 1px solid var(--border);
-  background: var(--bg3);
-  color: var(--text2);
-  transition: all .15s;
-  flex-shrink: 0;
-}
-.cat-btn:hover { border-color: var(--accent2); color: var(--accent3); }
-.cat-btn.on { border-color: currentColor; opacity: 1; }
-#cat-label {
-  font-size: 10px;
-  color: var(--text3);
-  white-space: nowrap;
-  margin-right: 4px;
-  flex-shrink: 0;
-}
-#cat-select-mobile {
-  display: none;
+.cat-group-select {
+  display: block;
   font-size: 12px;
   padding: 5px 8px;
   background: var(--bg3);
@@ -992,7 +984,9 @@ button { cursor: pointer; border: none; font-family: inherit; }
   border-radius: 6px;
   color: var(--text);
   outline: none;
+  cursor: pointer;
 }
+.cat-group-select:focus { border-color: var(--accent); }
 
 /* ─── News Card ─────────────────────────────── */
 .news-card {
@@ -1279,10 +1273,9 @@ button { cursor: pointer; border: none; font-family: inherit; }
   .mf-row { display: block; margin-bottom: 8px; }
   .mf-label { display: block; font-size: 10px; color: var(--text3); margin-bottom: 3px; }
 
-  /* 分類標籤列在手機上改用單一下拉選單，不逐個顯示按鈕（見 CLAUDE.md 第24節） */
+  /* 每個大分類下拉選單維持auto寬度自然換行，不強制滿版（14個都滿版會疊很多行，
+     見第29.7節），跟其他select一樣沒有特別放大手機版字體 */
   #cat-bar { padding: 6px 10px; }
-  #cat-label, #cat-bar .cat-btn, #cat-bar .cat-sep { display: none; }
-  #cat-select-mobile { display: block; width: 100%; }
 
   #sidebar { width: 42px; }
   .year-btn { padding: 6px 1px; font-size: 9px; }
@@ -1349,7 +1342,20 @@ button { cursor: pointer; border: none; font-family: inherit; }
     <button id="mobile-filter-toggle" onclick="toggleMobileFilterPanel()"><span id="mf-icon">🔽</span> 篩選<span id="mobile-filter-summary"></span></button>
     <div id="mobile-filter-collapse">
       <div class="filter-sep"></div>
-      <div class="mf-row"><span class="mf-label">評分</span><div class="filter-group" id="score-filters"></div></div>
+      <div class="mf-row"><span class="mf-label">評分</span><select id="score-select" onchange="state.scoreFilter = this.value; applyFilters(); updateMobileFilterSummary();" title="依個人評分篩選">
+        <option value="all">全部評分</option>
+        <option value="10">★10</option>
+        <option value="9">★9</option>
+        <option value="8">★8</option>
+        <option value="7">★7</option>
+        <option value="6">★6</option>
+        <option value="5">★5</option>
+        <option value="4">★4</option>
+        <option value="3">★3</option>
+        <option value="2">★2</option>
+        <option value="1">★1</option>
+        <option value="none">未評分</option>
+      </select></div>
       <div class="filter-sep"></div>
       <div class="mf-row">
         <span class="mf-label">類型</span>
@@ -1531,13 +1537,10 @@ button { cursor: pointer; border: none; font-family: inherit; }
     <div id="tag-picker-cats"></div>
   </div>
 
-  <!-- Category Filter Bar -->
+  <!-- Category Filter Bar：每個大分類各自一個下拉選單（收合狀態顯示群組名稱），
+       「全部分類」是唯一的重置按鈕，見 CLAUDE.md 第29.7節 -->
   <div id="cat-bar">
-    <span id="cat-label">類別：</span>
-    <button class="cat-btn on" data-cat="all" onclick="setCat(this)" style="color:var(--text2)">全部</button>
-    <select id="cat-select-mobile" onchange="setCatFromSelect(this)">
-      <option value="all">全部類別</option>
-    </select>
+    <button class="filt-btn on" id="cat-reset-btn" onclick="resetCatFilter()" title="清除分類篩選">全部分類</button>
   </div>
 
   <!-- Main -->
@@ -1777,7 +1780,7 @@ async function postCatTags(title, tags) {
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({ title, tags })
     });
-    rebuildUserTagBtns();
+    refreshUserTagCategory();
   } catch { alert('無法連線到伺服器，請確認 server.py 已啟動。'); }
 }
 
@@ -1888,37 +1891,42 @@ async function postTags(title, tags) {
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({ title, tags })
     });
-    rebuildUserTagBtns();
+    refreshUserTagCategory();
   } catch { alert('無法連線到伺服器，請確認 server.py 已啟動。'); }
 }
 
-function rebuildUserTagBtns() {
+// 使用者存了新的自訂標籤後呼叫，只更新「自訂標籤」這個虛擬分組的下拉選單
+// （見 initCatBar()），不用整個 initCatBar() 重新掃描一次全部38+個正規分類。
+function refreshUserTagCategory() {
   const bar = document.getElementById('cat-bar');
-  // 移除舊的分隔線和自訂標籤按鈕
-  bar.querySelectorAll('[data-usertag], [data-usersep]').forEach(el => el.remove());
-
   const userCounts = {};
   data.forEach(e => (e.user_tags || []).forEach(t => userCounts[t] = (userCounts[t] || 0) + 1));
   const userTags = Object.entries(userCounts).sort((a, b) => b[1] - a[1]);
-  if (!userTags.length) return;
 
-  const sep = document.createElement('span');
-  sep.dataset.usersep = '1';
-  sep.style.cssText = 'color:var(--text3);font-size:9px;white-space:nowrap;padding:0 4px;flex-shrink:0';
-  sep.textContent = '│';
-  bar.appendChild(sep);
-
-  userTags.forEach(([tag, cnt]) => {
-    const btn = document.createElement('button');
-    btn.className = 'cat-btn';
-    btn.dataset.cat = tag;
-    btn.dataset.usertag = '1';
-    btn.onclick = () => setCat(btn);
-    btn.style.color = '#c4b5fd';
-    btn.style.borderColor = '#c4b5fd50';
-    btn.textContent = `${tag} ${cnt}`;
-    bar.appendChild(btn);
-  });
+  const hadUserGroup = _catGroupOrder.includes('自訂標籤');
+  if (userTags.length) {
+    _catGroups['自訂標籤'] = userTags.map(([tag, cnt]) => ({ id: tag, label: tag, count: cnt }));
+    if (!hadUserGroup) {
+      _catGroupOrder.push('自訂標籤');
+      bar.appendChild(_makeCatGroupSelect('自訂標籤', state.catFilter));
+    } else {
+      const sel = bar.querySelector('.cat-group-select[data-group="自訂標籤"]');
+      if (sel) _populateCatGroupSelect(sel, '自訂標籤', state.catFilter);
+    }
+  } else if (hadUserGroup) {
+    // 使用者的最後一個自訂標籤被移除了：如果目前篩選正好停在一個已經不存在
+    // 的自訂標籤上，退回全部分類，避免畫面停留在查無資料的篩選狀態
+    delete _catGroups['自訂標籤'];
+    _catGroupOrder = _catGroupOrder.filter(g => g !== '自訂標籤');
+    const sel = bar.querySelector('.cat-group-select[data-group="自訂標籤"]');
+    const hadActiveCustomTag = sel && sel.value === state.catFilter && state.catFilter !== '';
+    if (sel) sel.remove();
+    if (hadActiveCustomTag) {
+      state.catFilter = 'all';
+      document.getElementById('cat-reset-btn').classList.add('on');
+      applyFilters();
+    }
+  }
 }
 
 // ─── Add / Edit News ──────────────────────────────────────────────────────────
@@ -2344,7 +2352,7 @@ document.getElementById('scanlog-modal').addEventListener('click', function(e) {
 // ─── State ───────────────────────────────────────────────────────────────────
 const state = {
   tab: 'anime',
-  showScores: { 10: true, 9: true, 8: true, 7: true, 6: true, 5: true, 4: true, 3: true, 2: true, 1: true },
+  scoreFilter: 'all',
   showTypes: { series: true, movie: true, ova: false, short_anime: false },
   showStatuses: { complete: true, partial: true, unwatched: true },
   newsMode: false,
@@ -2502,7 +2510,10 @@ function filterData() {
     if (state.newsMode) return isNews(e);
     if (isNews(e)) return false;
     if (q && !e.title.toLowerCase().includes(q) && !(e.aliases || []).some(a => a.toLowerCase().includes(q))) return false;
-    if (e.score in state.showScores && !state.showScores[e.score]) return false;
+    if (state.scoreFilter !== 'all') {
+      const scoreKey = e.score != null ? String(e.score) : 'none';
+      if (scoreKey !== state.scoreFilter) return false;
+    }
     if (e.type in state.showTypes && !state.showTypes[e.type]) return false;
     const st = getStatus(e);
     if (st in state.showStatuses && !state.showStatuses[st]) return false;
@@ -2516,16 +2527,81 @@ function filterData() {
   });
 }
 
+const SCORE_OPTION_LABEL = { all: '全部評分', 10: '★10', 9: '★9', 8: '★8', 7: '★7', 6: '★6', 5: '★5', 4: '★4', 3: '★3', 2: '★2', 1: '★1', none: '未評分' };
+const TYPE_LABEL = { series: '連載', movie: '劇場版', ova: 'OVA・特番', short_anime: '泡麵番' };
+const WATCH_STATUS_LABEL = { complete: '看完', partial: '看一半', unwatched: '未看' };
+
+// ─── 篩選按鈕/下拉選單的即時數量（faceted count，比照 遊戲/game_web.html 的
+// computeFacetCounts()/updateFilterCounts() 模式）─────────────────────────
+// 每個選項顯示的數字＝套用搜尋文字＋其他群組目前的篩選條件，但不套用這個選項
+// 自己所屬群組的目前選擇，算出「切成這個選項」會有多少筆。newsMode 開關本身
+// 影響的是「整批換成公告清單」，跟評分/類型/狀態是完全不同維度，所以評分/類型/
+// 狀態的桶一律只在「非公告」的動畫裡計算（不受目前是否處於公告模式影響，維持
+// 數字穩定、有意義），「公告/消息」按鈕自己的數字則是「有多少筆公告」。
+function computeFacetCounts() {
+  const q = state.search.toLowerCase();
+  const passSearch = e => !q || e.title.toLowerCase().includes(q) || (e.aliases || []).some(a => a.toLowerCase().includes(q));
+  const passCat = e => {
+    if (state.catFilter === 'all') return true;
+    const inCats = (e.tags || []).includes(state.catFilter);
+    const inUser = (e.user_tags || []).includes(state.catFilter);
+    return inCats || inUser;
+  };
+
+  const scoreCounts = {};
+  const typeCounts = {};
+  const statusCounts = {};
+  let newsCount = 0;
+
+  data.forEach(e => {
+    if (isNews(e)) {
+      if (passSearch(e)) newsCount++;
+      return;
+    }
+    if (!passSearch(e) || !passCat(e)) return;
+    const scoreKey = e.score != null ? String(e.score) : 'none';
+    const st = getStatus(e);
+    const scoreOk = state.scoreFilter === 'all' || state.scoreFilter === scoreKey;
+    const typeOk = !(e.type in state.showTypes) || state.showTypes[e.type];
+    const statusOk = !(st in state.showStatuses) || state.showStatuses[st];
+
+    if (typeOk && statusOk) scoreCounts[scoreKey] = (scoreCounts[scoreKey] || 0) + 1;
+    if (scoreOk && statusOk) typeCounts[e.type] = (typeCounts[e.type] || 0) + 1;
+    if (scoreOk && typeOk) statusCounts[st] = (statusCounts[st] || 0) + 1;
+  });
+
+  return { scoreCounts, typeCounts, statusCounts, newsCount };
+}
+
+function updateFilterCounts() {
+  const { scoreCounts, typeCounts, statusCounts, newsCount } = computeFacetCounts();
+
+  const scoreAllCount = Object.values(scoreCounts).reduce((a, b) => a + b, 0);
+  const sel = document.getElementById('score-select');
+  if (sel) {
+    for (const opt of sel.options) {
+      const count = opt.value === 'all' ? scoreAllCount : (scoreCounts[opt.value] || 0);
+      opt.textContent = `${SCORE_OPTION_LABEL[opt.value]} (${count})`;
+    }
+  }
+
+  for (const t of ['series', 'movie', 'ova', 'short_anime']) {
+    const btn = document.getElementById(`type-btn-${t}`);
+    if (btn) btn.textContent = `${TYPE_LABEL[t]} (${typeCounts[t] || 0})`;
+  }
+
+  for (const st of ['complete', 'partial', 'unwatched']) {
+    const btn = document.getElementById(`status-btn-${st}`);
+    if (btn) btn.textContent = `${WATCH_STATUS_LABEL[st]} (${statusCounts[st] || 0})`;
+  }
+
+  const newsBtn = document.getElementById('news-mode-btn');
+  if (newsBtn) newsBtn.textContent = `公告/消息 (${newsCount})`;
+}
+
 // ─── Toggle filter buttons ───────────────────────────────────────────────────
 // 評分／連載/劇場版/OVA・特番/泡麵番／看完/看一半/未看：各自獨立開關的顯示切換鈕
 // （見 CLAUDE.md 第18節，取代原本互斥單選的篩選方式，統一成一致的操作方式）
-function toggleShowScore(score) {
-  state.showScores[score] = !state.showScores[score];
-  document.getElementById(`score-btn-${score}`).classList.toggle('on', state.showScores[score]);
-  applyFilters();
-  updateMobileFilterSummary();
-}
-
 function toggleShowType(type) {
   state.showTypes[type] = !state.showTypes[type];
   document.getElementById(`type-btn-${type}`).classList.toggle('on', state.showTypes[type]);
@@ -2559,7 +2635,7 @@ function updateMobileFilterSummary() {
   const el = document.getElementById('mobile-filter-summary');
   const btn = document.getElementById('mobile-filter-toggle');
   if (!el || !btn) return;
-  const scoresDefault = Object.values(state.showScores).every(v => v === true);
+  const scoresDefault = state.scoreFilter === 'all';
   const typesDefault = state.showTypes.series === true && state.showTypes.movie === true &&
                         state.showTypes.ova === false && state.showTypes.short_anime === false;
   const statusesDefault = state.showStatuses.complete === true && state.showStatuses.partial === true &&
@@ -2846,25 +2922,58 @@ async function revertChange(runId, idx) {
 
 // ─── Render Card ─────────────────────────────────────────────────────────────
 // ─── Category filter ─────────────────────────────────────────────────────────
-function setCat(btn) {
-  document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('on'));
-  btn.classList.add('on');
-  state.catFilter = btn.dataset.cat;
-  const sel = document.getElementById('cat-select-mobile');
-  if (sel) sel.value = state.catFilter;
+// ─── 分類標籤：每個大分類各自一個下拉選單，收合狀態直接顯示群組名稱本身
+// （2026-08-18改版，見 CLAUDE.md 第29.7節）。_catGroups：{ 群組名稱:
+// [{id, label, count}, ...] }，initCatBar() 建立一次，之後查表用。
+// 「全部分類」是唯一維持按鈕形式的重置控制項（resetCatFilter()）。
+let _catGroups = {};
+let _catGroupOrder = [];
+
+// 把某個大分類下拉選單重新填成「佔位選項（顯示群組名稱本身）＋這個群組的
+// 細項清單」。current 是目前套用中的 state.catFilter；如果它剛好屬於這個
+// 群組，對應的<option>會被標成selected（讓這個select的收合狀態直接顯示
+// 目前選中的標籤，而不是退回顯示群組名稱）。
+function _populateCatGroupSelect(sel, group, current) {
+  const tags = _catGroups[group] || [];
+  const stillValid = tags.some(t => t.id === current);
+  let html = `<option value=""${stillValid ? '' : ' selected'} disabled>${escHtml(group)}</option>`;
+  html += tags.map(t => {
+    const label = t.count > 0 ? `${t.label} ${t.count}` : t.label;
+    return `<option value="${escHtml(t.id)}"${t.count === 0 ? ' disabled' : ''}${t.id === current ? ' selected' : ''}>${escHtml(label)}</option>`;
+  }).join('');
+  sel.innerHTML = html;
+}
+
+function _makeCatGroupSelect(group, current) {
+  const sel = document.createElement('select');
+  sel.className = 'cat-group-select';
+  sel.dataset.group = group;
+  sel.onchange = () => setCatFromGroupSelect(sel);
+  _populateCatGroupSelect(sel, group, current);
+  return sel;
+}
+
+function resetCatFilter() {
+  state.catFilter = 'all';
+  document.getElementById('cat-reset-btn').classList.add('on');
+  document.querySelectorAll('.cat-group-select').forEach(sel => { sel.selectedIndex = 0; });
   applyFilters();
 }
 
-function setCatFromSelect(sel) {
-  const id = sel.value;
-  document.querySelectorAll('.cat-btn').forEach(b => b.classList.toggle('on', b.dataset.cat === id));
-  state.catFilter = id;
+function setCatFromGroupSelect(sel) {
+  const value = sel.value;
+  if (!value) return;   // 選到自己的佔位選項（disabled，正常不會被觸發，防禦用）
+  state.catFilter = value;
+  document.getElementById('cat-reset-btn').classList.remove('on');
+  // 其他大分類的選單都退回顯示自己的群組名稱，因為現在只有這一個標籤是active的
+  document.querySelectorAll('.cat-group-select').forEach(s => {
+    if (s !== sel) s.selectedIndex = 0;
+  });
   applyFilters();
 }
 
 function initCatBar() {
   const bar = document.getElementById('cat-bar');
-  const mobileSelect = document.getElementById('cat-select-mobile');
   const groupOrder = [
     '轉生・穿越・網文公式', '成長・王道', '戀愛・日常・治癒',
     '智鬥・懸疑・策略', '科幻・機甲・末日', '職場・社會寫實',
@@ -2881,71 +2990,36 @@ function initCatBar() {
   });
   const counts = {};
   data.forEach(e => (e.tags || []).forEach(t => counts[t] = (counts[t] || 0) + 1));
-  let lastGroup = null;
-  let optHtml = '';
-  let optGroupOpen = false;
-  catOrder.forEach(([id, cat]) => {
-    if (cat.group !== lastGroup) {
-      lastGroup = cat.group;
-      const sep = document.createElement('span');
-      sep.className = 'cat-sep';
-      sep.style.cssText = 'color:var(--text3);font-size:9px;white-space:nowrap;padding:0 4px;flex-shrink:0';
-      sep.textContent = '│';
-      bar.appendChild(sep);
-      if (optGroupOpen) optHtml += '</optgroup>';
-      optHtml += `<optgroup label="${escHtml(cat.group)}">`;
-      optGroupOpen = true;
-    }
-    const btn = document.createElement('button');
-    btn.className = 'cat-btn';
-    btn.dataset.cat = id;
-    const n = counts[id] || 0;
-    if (n === 0) {
-      btn.style.opacity = '0.35';
-      btn.style.cursor = 'default';
-      btn.onclick = null;
-    } else {
-      btn.onclick = () => setCat(btn);
-    }
-    btn.style.color = cat.color;
-    btn.style.borderColor = cat.color + '50';
-    btn.textContent = n > 0 ? `${cat.label} ${n}` : cat.label;
-    bar.appendChild(btn);
-    optHtml += `<option value="${escHtml(id)}"${n === 0 ? ' disabled' : ''}>${escHtml(n > 0 ? `${cat.label} ${n}` : cat.label)}</option>`;
-  });
-  if (optGroupOpen) optHtml += '</optgroup>';
 
-  // 加入使用者自訂標籤
+  _catGroups = {};
+  _catGroupOrder = [];
+  catOrder.forEach(([id, cat]) => {
+    if (!_catGroups[cat.group]) {
+      _catGroups[cat.group] = [];
+      _catGroupOrder.push(cat.group);
+    }
+    _catGroups[cat.group].push({ id, label: cat.label, count: counts[id] || 0 });
+  });
+
+  // 使用者自訂標籤當成一個額外的虛擬分組，跟正規分類群組並列成同一排下拉選單
   const userCounts = {};
   data.forEach(e => (e.user_tags || []).forEach(t => userCounts[t] = (userCounts[t] || 0) + 1));
   const userTags = Object.entries(userCounts).sort((a, b) => b[1] - a[1]);
   if (userTags.length) {
-    const sep = document.createElement('span');
-    sep.className = 'cat-sep';
-    sep.dataset.usersep = '1';
-    sep.style.cssText = 'color:var(--text3);font-size:9px;white-space:nowrap;padding:0 4px;flex-shrink:0';
-    sep.textContent = '│';
-    bar.appendChild(sep);
-    optHtml += '<optgroup label="自訂標籤">';
-    userTags.forEach(([tag, cnt]) => {
-      const btn = document.createElement('button');
-      btn.className = 'cat-btn';
-      btn.dataset.cat = tag;
-      btn.dataset.usertag = '1';
-      btn.onclick = () => setCat(btn);
-      btn.style.color = '#c4b5fd';
-      btn.style.borderColor = '#c4b5fd50';
-      btn.textContent = `${tag} ${cnt}`;
-      bar.appendChild(btn);
-      optHtml += `<option value="${escHtml(tag)}">${escHtml(tag)} ${cnt}</option>`;
-    });
-    optHtml += '</optgroup>';
+    _catGroupOrder.push('自訂標籤');
+    _catGroups['自訂標籤'] = userTags.map(([tag, cnt]) => ({ id: tag, label: tag, count: cnt }));
   }
 
-  if (mobileSelect) {
-    mobileSelect.innerHTML = '<option value="all">全部類別</option>' + optHtml;
-    mobileSelect.value = state.catFilter;
+  // 如果使用者重新整理資料前選的標籤已經不存在了（例如自訂標籤被移除），
+  // 退回全部分類，避免畫面停留在一個查無資料的篩選狀態
+  if (state.catFilter !== 'all') {
+    const stillExists = _catGroupOrder.some(g => (_catGroups[g] || []).some(t => t.id === state.catFilter));
+    if (!stillExists) state.catFilter = 'all';
   }
+
+  bar.querySelectorAll('.cat-group-select').forEach(el => el.remove());
+  document.getElementById('cat-reset-btn').classList.toggle('on', state.catFilter === 'all');
+  _catGroupOrder.forEach(g => bar.appendChild(_makeCatGroupSelect(g, state.catFilter)));
 }
 
 function renderNewsCard(e) {
@@ -3096,6 +3170,7 @@ function applyFilters() {
   state.search = document.getElementById('search-box').value;
   const filtered = filterData();
   renderContent(filtered);
+  updateFilterCounts();
 }
 
 function renderContent(filtered) {
@@ -3241,20 +3316,6 @@ function updateHeaderStats() {
     `${animeOnly.length} 部動畫 · ${scored} 部有評分 · ${movies} 部劇場版 · ${Math.min(...years)}–${Math.max(...years)}`;
 }
 
-function initScoreBar() {
-  const bar = document.getElementById('score-filters');
-  bar.innerHTML = '';
-  for (let s = 10; s >= 1; s--) {
-    const btn = document.createElement('button');
-    btn.className = 'filt-btn on';
-    btn.id = `score-btn-${s}`;
-    btn.title = `點擊可切換是否顯示評分${s}分的動畫`;
-    btn.textContent = `★${s}`;
-    btn.onclick = () => toggleShowScore(s);
-    bar.appendChild(btn);
-  }
-}
-
 // 漫畫 nav-tab 的數量徽章：只讀漫畫資料夾產生的一個小數字檔（見 CLAUDE.md 第19節），
 // 不載入/解析漫畫的完整 data.js，避免動畫頁面碰到漫畫的資料結構
 async function loadMangaCount() {
@@ -3336,7 +3397,6 @@ function init() {
   loadMangaCount();
   loadGameCount();
   loadLastUpdated();
-  initScoreBar();
   initCatBar();
   applyFilters();
   updateMobileFilterSummary();
